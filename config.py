@@ -5,7 +5,8 @@ max_items_per_cat = 3000
 skip_cat_when_large_then = 1100
 max_retry = 6
 
-reddit_data_file = 'data/reddit.json'
+reddit_json_file = 'data/reddit.json'
+reddit_csv_file = 'data/reddit.csv'
 
 reddit_urls = [
       ('life', 
@@ -201,9 +202,10 @@ reddit_urls = [
         ('futurology', 
             ('https://www.reddit.com/r/Futurology/', 
                 'https://www.reddit.com/r/Futurology/top/')),
-        ('causality', 
-            ('https://www.reddit.com/r/causality/', 
-                'https://www.reddit.com/r/causality/top/')),
+      # failed
+      # ('causality', 
+      #     ('https://www.reddit.com/r/causality/', 
+      #         'https://www.reddit.com/r/causality/top/')),
 
         ('i2p', 
             ('https://www.reddit.com/r/i2p/', 
@@ -211,17 +213,19 @@ reddit_urls = [
         ('tor', 
             ('https://www.reddit.com/r/TOR/', 
                 'https://www.reddit.com/r/TOR/top/')),
-        ('p2p', 
-            ('https://www.reddit.com/r/P2P/', 
-                'https://www.reddit.com/r/P2P/top/')),
+      # failed
+      # ('p2p', 
+      #     ('https://www.reddit.com/r/P2P/', 
+      #         'https://www.reddit.com/r/P2P/top/')),
         ('decentralization', 
                 ('https://www.reddit.com/r/decentralization/',
                     'https://www.reddit.com/r/decentralization/top/', 
                     'https://www.reddit.com/r/Rad_Decentralization/top/',
                     'https://www.reddit.com/r/DistributedComputing/top/')),
-        ('privacy', 
-            ('https://www.reddit.com/r/Privacy/', 
-                'https://www.reddit.com/r/Privacy/top/')),
+      # failed
+      # ('privacy', 
+      #     ('https://www.reddit.com/r/Privacy/', 
+      #         'https://www.reddit.com/r/Privacy/top/')),
         ('bitcoin', 
             ('https://www.reddit.com/r/Bitcoin/', 
                 'https://www.reddit.com/r/Bitcoin/top/')),

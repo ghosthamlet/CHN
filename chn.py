@@ -3,8 +3,10 @@
 import os
 import time
 import json
+import csv
 import math
 import gzip
+
 from urllib import request, parse
 from bs4 import BeautifulSoup
 
@@ -13,9 +15,9 @@ import config
 
 def crawle_reddit():
     items = {}
-    if os.path.exists(config.reddit_data_file):
+    if os.path.exists(config.reddit_json_file):
         print('Data file exists.')
-        with open(config.reddit_data_file, 'r') as f:
+        with open(config.reddit_json_file, 'r') as f:
             items = json.loads(f.read())
 
     for cat, urls in config.reddit_urls:
@@ -23,7 +25,7 @@ def crawle_reddit():
             urls = (urls, )
         max_items_per_cat_url = math.ceil(config.max_items_per_cat / len(urls))
 
-        cat_len = len(filter(lambda x: x[1]['cat'] == cat, items.items()))
+        cat_len = len(list(filter(lambda x: x[1]['cat'] == cat, items.items())))
         if cat_len >= config.skip_cat_when_large_then:
             print('Skip %s for count %s.' % (cat, cat_len))
             continue
@@ -34,7 +36,7 @@ def crawle_reddit():
             i = 0
 
             while not is_break:
-                resp = open_url(cat, url)
+                resp = open_url(cat, next_url)
                 if resp is None:
                     print('Failed Crawle %s url: %s...' % (cat, url))
                     is_break = True
@@ -46,13 +48,14 @@ def crawle_reddit():
                     title = a.text
                     href = a.attrs['href']
                     if href in items:
+                        if 'href' in items[href]:
+                            del items[href]['href']
                         continue
                     if 'alb.reddit.com' in href or 'on Slack!' in title:
                         continue
 
                     items[href] = dict(
                             title=title,
-                            href=href,
                             cat=cat,
                         )
                     i += 1
@@ -66,11 +69,11 @@ def crawle_reddit():
                     print('%s reached end with %s items.' % (cat, len(items)))
                     is_break = True
 
-                with open(config.reddit_data_file, 'w') as f:
+                with open(config.reddit_json_file, 'w') as f:
                     f.write(json.dumps(items))
 
 
-def open_url(cat, url)
+def open_url(cat, url):
     retry = 0
 
     while retry < config.max_retry:
@@ -81,6 +84,7 @@ def open_url(cat, url)
             resp = request.urlopen(req)
             return resp
         except:
+            # XXX: catch timeout/ctrl-c ...
             retry += 1
             time.sleep(1.5)
             print('Retry %s time crawle %s url: %s...' % (retry, cat, url))
@@ -93,3 +97,17 @@ def parse_resp(resp):
     html = gf.read()
     soup = BeautifulSoup(html.decode('utf8'))
     return soup
+
+
+# https://realpython.com/python-csv/
+def reddit_json_to_csv():
+    with open(config.reddit_json_file, 'r') as f:
+        json_dict = json.loads(f.read())
+    with open(config.reddit_csv_file, 'w') as f:
+        fieldnames = ['title', 'url', 'cat']
+        w = csv.DictWriter(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL, fieldnames=fieldnames)
+        w.writeheader()
+        for url, d in json_dict.items():
+            if 'href' in d:
+                del d['href']
+            w.writerow({**d, 'url': url})
