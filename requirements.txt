@@ -4,6 +4,16 @@ sklearn>=0.19.1
 pandas>=0.20.3
 pandas_summary>=0.0.41
 beautifulsoup4
+pandas-profiling
+imbalanced-learn
+gensim
+requests
+
+# interactive table
+# https://blog.ouseful.info/2016/12/29/simple-view-controls-for-pandas-dataframes-using-ipython-widgets/
+# https://alysivji.github.io/reactive-dashboards-with-dash.html
+qgrid
+jupyter-datatables
 # matplotlib>=2.0.2
 # seaborn>=0.8.1
 # spacy>=2.0.11

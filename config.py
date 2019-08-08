@@ -3,7 +3,7 @@
 proxy_host = '127.0.0.1:19180'
 max_items_per_cat = 3000
 skip_cat_when_large_then = 1100
-max_retry = 6
+max_retry = 3
 
 reddit_json_file = 'data/reddit.json'
 reddit_csv_file = 'data/reddit.csv'
@@ -378,12 +378,17 @@ reddit_headers = {
             'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101 Firefox/68.0',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.5',
-             # this have to ungzip
-            'Accept-Encoding': 'gzip, deflate, br',
+            # this have to ungzip
+            # 'Accept-Encoding': 'gzip, deflate, br',
+            'Accept-Encoding': 'gzip, deflate',
             'Connection': 'keep-alive',
-            'Cookie': 'loid=0000000000000401xj.2.1271292571569.Z0FBQUFBQmExR2o0c0J1WGtnQmUtd1otV19iNWphYUs0RTRHVzRTdDVaaVV1LThSaFRWeU5jLW15aFFhalFzYmpsY25FNF9oc21DOXFNTG5LSlZKU2tFZGdXbGxDZ29ObXV3RGpsUkx4d0lpOW9xZ2xWcWxHOFhoaHY4ZGNOekhybHNhTlA4X1F1T2M; edgebucket=sNsloB62V2ExNKdjXf; _ga=GA1.2.10112006.1523868326; __utma=55650728.10112006.1523868326.1539333330.1544603202.156; __gads=ID=88bf70d20a8b3dba:T=1523868331:S=ALNI_MZJ_D2twhkmVjOJNu8odDkfGHORBw; reddaid=3CDP5KVPWTONLTIB; reddit_session=6720967%2C2018-04-23T12%3A03%3A43%2C179943dd5efe602d9b871210c5ac62c4cba2a36d; uapp_cookie=3%3A1527210000; recent_srs=t5_2r3gv%2Ct5_2qkgk%2Ct5_2slz7%2Ct5_2z2bg%2Ct5_2sf8v%2Ct5_2vssy%2Ct5_2qhn4%2Ct5_2qhij%2Ct5_2qkfg%2Ct5_2t5eh; rseor3=; rabt=; token=eyJhY2Nlc3NUb2tlbiI6IjY3MjA5NjctcXNfbHBkVmNyMFVERFBqZHVQTDVjU1dmTkU0IiwidG9rZW5UeXBlIjoiYmVhcmVyIiwiZXhwaXJlcyI6MTU2MzEwNjAyMzQxOSwicmVmcmVzaFRva2VuIjoiNjcyMDk2Ny1mS19HUGRXejYtM01ZbXQwOVRYS1B5ejNkclEiLCJzY29wZSI6IiogZW1haWwiLCJ1bnNhZmVMb2dnZWRPdXQiOmZhbHNlfQ==.2; pc=uw; session_tracker=Z9w5GWUgWvR8hhTTwa.0.1563102662772.Z0FBQUFBQmRLdzNHaUF5YkpYMWt1M20yYWJOb3J6NXlvb1ltVFlBWnlKRE9KdGNWdTFnLVJuMHpzdUQxWnZjVnUxMlY4Uy12dVZJUjRfQ0ZwWGhVY3Q5QV9jQkU5RDBLandDVElRVkd3VjB3RTJjSTVyc21oYnlrZ2V6T0Z0al83R25RNUNkaEZkSzg; aasd=1%7C1563102521145; __aaxsc=0; ghosthamlet_recentclicks2=t3_cbfk2o%2Ct3_cd0osl%2Ct3_4huuud%2C; theme=daymode; compact=true; over18=true',
+            'Cookie': 'loid=0000000000000401xj.2.1271292571569.Z0FBQUFBQmRNR2FOZXdFZWJlNWNXNDRaaGM2SDlDSXN0LTdvblRJcnJqMDBHVXdVWDR2cko3MHhNZ2JRX0NvcWREeGVMQ3UtWW1IYzFKTEZQemE1dXhJV25VNUduV3BoV013MS1BeFNGRjEyZnd3enBnNlI1OG1MOGpNd1UwdVptcWlERVR2V1dkRi0; edgebucket=sNsloB62V2ExNKdjXf; _ga=GA1.2.10112006.1523868326; __utma=55650728.10112006.1523868326.1539333330.1544603202.156; __gads=ID=88bf70d20a8b3dba:T=1523868331:S=ALNI_MZJ_D2twhkmVjOJNu8odDkfGHORBw; reddaid=3CDP5KVPWTONLTIB; reddit_session=6720967%2C2019-07-18T05%3A30%3A37%2Cef3ade4a0c7bf1071503c6104c15acf29754258e; uapp_cookie=3%3A1527210000; recent_srs=t5_306nd%2Ct5_2qhps%2Ct5_2r3gv%2Ct5_2qr6q%2Ct5_2qh0n%2Ct5_2qrgl%2Ct5_2qh1u%2Ct5_2qirl%2Ct5_2qkgk%2Ct5_2slz7; rseor3=true; rabt=; theme=daymode; compact=true; pc=uw; session_tracker=r4VzHH0l71gR1RMMG5.0.1563453140991.Z0FBQUFBQmRNR2JWRVo5bGt6dUY1TGJ0TEZ6SUY2UUJ5b1BvOWxoZXlycmJKYXozYUN3X1lmWUkzSEhlc3JNWEM5UGRxcGZ3dEFLTTRTbmZnSkI5dDNYUHQ3WGltOW5iZjBmbkxxLXJDNllsclBnMVEtZUNFLW95c2diMlcwaWR2UDBCc01Yb2IwLVE; aasd=3%7C1563452971473; __aaxsc=0; session=8b899fba2ce0199efa93fc2ef4aafdae6e76fca5gAJKbmYwXUdB10wZm5B7s31xAVUHX2NzcmZ0X3ECWCgAAABlODk0NTljYWRiNTc0NzI2N2JmMWMyMzViM2ZjZGNjNjE0ZjdlMDUxcQNzh3EELg==; token=eyJhY2Nlc3NUb2tlbiI6Ii1Ea2tHb2xFX3VuWlUzV2psX211Q1Q0RndJZnciLCJ0b2tlblR5cGUiOiJiZWFyZXIiLCJleHBpcmVzIjoiMjAxOS0wNy0xOFQxMzozMTowOS4wODhaIiwic2NvcGUiOiIqIiwidW5zYWZlTG9nZ2VkT3V0Ijp0cnVlfQ==.2',
             'Upgrade-Insecure-Requests': '1',
             'Pragma': 'no-cache',
             'Cache-Control': 'no-cache',
             'TE': 'Trailers',
             }
+
+reddit_skip_text_cat = ['painting']
+reddit_skip_text_domain = ['youtu.be', 'youtube.com', 'imgur.com']
+
