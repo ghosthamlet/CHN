@@ -18,6 +18,9 @@ import extract_text as et
 import requests
 import pickle
 
+import numpy as np
+from train import *
+
 
 def crawle_reddit():
     items = {}
@@ -105,7 +108,7 @@ class HnData:
         self.all_posts = {k: {} for k in self.pages}
 
     def load_posts(self, page_type):
-        with open('data/hn_%.json' % page_type, 'r') as f:
+        with open('data/hn_%s.json' % page_type, 'r') as f:
             self.all_posts[page_type] = json.loads(f.read())
 
 
@@ -152,11 +155,9 @@ class HnCrawler:
             return
         
         soup = parse_resp(r)
+        athing_els = soup.select('.athing')
         title_els = soup.select('.storylink')
-        site_els = soup.select('.sitebit')
         rank_els = soup.select('.rank')
-        score_els = soup.select('.score')
-        author_els = soup.select('.hnuser')
         age_els = soup.select('.age')
         comment_els = soup.select('.subtext')
         more_el = soup.select('.morelink')
@@ -175,18 +176,21 @@ class HnCrawler:
             c_url = ''
             c_el = comment_els[i].select('a')[-1]
             if 'comment' in c_el.text:
-                c_cnt = int(c_el.text.split(' ')[0])
+                c_cnt = int(c_el.text.split('\xa0')[0])
                 c_url = c_el.attrs['href']
             if 'discuss' in c_el.text:
                 c_url = c_el.attrs['href']
+            site_el = athing_els[i].select_one('.sitebit')
+            score_el = athing_els[i].select_one('.score')
+            author_el = athing_els[i].select_one('.hnuser')
 
-            posts[t.atts['href']] = dict(
+            posts[t.attrs['href']] = dict(
                     title=t.text,
-                    rank=rank_els[i].text[:-1],
-                    site=site_els[i].text,
-                    score=int(score_els[i].text.split(' ')[0]),
-                    auther=author_els[i].text,
-                    age=age[i].text,
+                    rank=int(rank_els[i].text[:-1]),
+                    site=site_el.text if site_el else '',
+                    score=int(score_el.text.split(' ')[0]) if score_el else 0,
+                    auther=author_el.text if author_el else '',
+                    age=age_els[i].text,
                     comment_cnt=c_cnt,
                     comment_url=c_url,
             )
@@ -215,17 +219,21 @@ class HnCrawler:
 
 class HnAnalyze:
     def __init__(self):
+        # have to run this line in __main__ module??
+        # from train import *
         with open('data/LinearSVC_model.pkl', 'rb') as f:
             self.model = pickle.load(f)
 
     def assoc_cat(self, posts):
         for k, v in posts.items():
-            cat = self.classify(v['title'])
+            cat = self.classify([v['title']])[0]
             v['cat'] = cat
 
     def classify(self, titles):
         return self.model.predict(titles)
-        # return self.model.predict_proba(titles)
+      # probs = self.model.decision_function(titles)
+      # idxs = np.argsort(probs)[0][-3:][::-1]
+      # return self.model.classes_[idxs]
 
     def maybe_upvote(self, post, upvoted_posts):
         """check if post cat is in upvoted_posts most common cats,
@@ -245,12 +253,6 @@ class HnSearch:
     def __init__(self):
         pass
     
-
-class HnConsole:
-    def __init__(self, page_type):
-        self.hn_data = HnData()
-        self.hn_data.load_posts(page_type)
-
 
 def open_url(cat, url):
     retry = 0
