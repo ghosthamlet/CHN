@@ -86,22 +86,27 @@ class HnData:
                 hot={
                     'url': '',
                     'saved': 'data/hn_hot.json',
+                    'login': False,
                     }, 
                 lastest={
                     'url': '',
                     'saved': 'data/hn_lastest.json',
+                    'login': False,
                     }, 
                 submitted={
                     'url': '',
                     'saved': 'data/hn_submitted.json',
+                    'login': True,
                     }, 
                 upvoted={
                     'url': '',
                     'saved': 'data/hn_upvoted.json',
+                    'login': True,
                     }, 
                 favorite={
                     'url': '',
                     'saved': 'data/hn_favorite.json',
+                    'login': True,
                     },
                 )
 

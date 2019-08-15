@@ -1,6 +1,7 @@
 
 wheel
 numpy
+hyperparameter-hunter
 sklearn
 pandas
 pandas_summary
