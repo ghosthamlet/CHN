@@ -84,27 +84,27 @@ class HnData:
     def __init__(self):
         self.pages = dict(
                 hot={
-                    'url': '',
+                    'url': '/',
                     'saved': 'data/hn_hot.json',
                     'login': False,
                     }, 
                 lastest={
-                    'url': '',
+                    'url': '/newest',
                     'saved': 'data/hn_lastest.json',
                     'login': False,
                     }, 
                 submitted={
-                    'url': '',
+                    'url': '/submitted?id=%s',
                     'saved': 'data/hn_submitted.json',
                     'login': True,
                     }, 
                 upvoted={
-                    'url': '',
+                    'url': '/upvoted?id=%s',
                     'saved': 'data/hn_upvoted.json',
                     'login': True,
                     }, 
                 favorite={
-                    'url': '',
+                    'url': '/favorites?id=%s',
                     'saved': 'data/hn_favorite.json',
                     'login': True,
                     },
@@ -132,16 +132,24 @@ class HnCrawler:
               'https': config.proxy_host, 
             }
 
-    def login(self, acct, pw):
+        if os.path.exists(self.cookie_file):
+            with open(self.cookie_file, 'br') as f:
+                self.cookies = pickle.load(f)
+
+    def login(self, username, password):
         data = {
-                'acct': acct,
-                'pw': pw,
+                'acct': username,
+                'pw': password,
                 }
         r = self.request('post', '/login', data=data)
+        if b'type="password"' in r.content:
+            return False
+
         self.cookies = r.cookies #.decode()
 
         with open(self.cookie_file, 'bw+') as f:
             pickle.dump(self.cookies, f)
+        return True
 
     def crawle(self, url):
         r = self.request('get', url)
@@ -209,8 +217,10 @@ class HnCrawler:
 
     def request(self, method, url, data=None):
         kwargs = dict(
-                    proxies=self.proxy_dict
-                )
+                # login post will response cookie, if follow redirect, can't get that cookie
+                allow_redirects=False,
+                proxies=self.proxy_dict
+        )
         if data is not None:
             kwargs['data'] = data
         if self.cookies is not None:
@@ -291,7 +301,7 @@ def open_url(cat, url):
 
 def parse_resp(resp):
     if type(resp) == requests.models.Response:
-        return BeautifulSoup(resp.content)
+        return BeautifulSoup(resp.content, features="lxml")
 
     zip_type = resp.headers.get('content-encoding', '')
     if zip_type  == 'deflate':

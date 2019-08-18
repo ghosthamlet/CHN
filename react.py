@@ -1,5 +1,7 @@
 #coding=utf8
 
+import random
+
 import urwid
 
 
@@ -8,20 +10,6 @@ _ROOT_EL = urwid.Pile([])
 
 
 class Component:
-    instances = {}
-
-    @classmethod
-    def factory(cls, instance_name, **props):
-        obj = Component.instances.get(instance_name)
-
-        if obj is not None:
-            obj.props = props
-        else:
-            obj = cls(**props)
-            Component.instances[instance_name] = obj
-
-        return obj
-
     def __init__(self, **props):
         self.props = props
         self.state = {}
@@ -37,13 +25,39 @@ class Component:
             if _APP is not None:
                 _ROOT_EL.contents = _APP.render()
 
+    def component_did_mount(self):
+        pass
+
     def render(self):
         pass
 
 
 class React:
+    instances = {}
+    n_element = 0
+
+    def create_element(type, instance_name, return_instance=False, **props):
+        random.seed(React.n_element)
+        React.n_element += 1
+
+        obj = React.instances.get(instance_name)
+
+        if obj is not None:
+            obj.props = props
+            el = obj.render()
+        else:
+            obj = type(**props)
+            # el = obj.render()
+            obj.component_did_mount()
+            el = obj.render()
+            React.instances[instance_name] = obj
+
+        return (obj, el) if return_instance else el
+
+
+class ReactConsole:
     def render(app):
         global _APP
-        _APP = app
-        _ROOT_EL.contents = app.render()
+        _APP, _ROOT_EL.contents = app
         urwid.MainLoop(_ROOT_EL, palette=[('reversed', 'standout', '')]).run()
+
