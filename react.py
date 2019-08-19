@@ -6,7 +6,7 @@ import urwid
 
 
 _APP = None
-_ROOT_EL = urwid.Pile([])
+_ROOT_EL = None
 
 
 class Component:
@@ -56,8 +56,9 @@ class React:
 
 
 class ReactConsole:
-    def render(app):
-        global _APP
+    def render(app, root_el):
+        global _APP, _ROOT_EL
+        _ROOT_EL = root_el
         _APP, _ROOT_EL.contents = app
         urwid.MainLoop(_ROOT_EL, palette=[('reversed', 'standout', '')]).run()
 
