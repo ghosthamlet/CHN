@@ -1,6 +1,7 @@
 #coding=utf8
 
 import os
+import re
 import time
 import json
 import csv
@@ -8,6 +9,8 @@ import math
 import gzip
 import zlib
 import shutil
+import datetime
+import logging
 
 from urllib.parse import urlparse
 from urllib import request, parse
@@ -20,6 +23,19 @@ import pickle
 
 import numpy as np
 from train import *
+
+
+logFormatter = logging.Formatter("%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
+logger = logging.getLogger('crawler')
+
+fileHandler = logging.FileHandler("{0}/{1}.log".format('data', 'ui'))
+fileHandler.setFormatter(logFormatter)
+logger.addHandler(fileHandler)
+
+# consoleHandler = logging.StreamHandler()
+# consoleHandler.setFormatter(logFormatter)
+# logger.addHandler(consoleHandler)
+logger.setLevel(logging.INFO)
 
 
 def crawle_reddit():
@@ -86,26 +102,55 @@ class HnData:
                 hot={
                     'url': '/',
                     'saved': 'data/hn_hot.json',
+                    'max_page': 1,
                     'login': False,
                     }, 
                 lastest={
                     'url': '/newest',
                     'saved': 'data/hn_lastest.json',
+                    'max_page': 10,
                     'login': False,
                     }, 
+                past={
+                    'url': '/front',
+                    'saved': 'data/hn_past.json',
+                    'max_page': 20,
+                    'login': False,
+                    }, 
+                ask={
+                    'url': '/ask',
+                    'saved': 'data/hn_ask.json',
+                    'max_page': 20,
+                    'login': False,
+                    },
+                show={
+                    'url': '/show',
+                    'saved': 'data/hn_show.json',
+                    'max_page': 20,
+                    'login': False,
+                    },
+                jobs={
+                    'url': '/jobs',
+                    'saved': 'data/hn_jobs.json',
+                    'max_page': 20,
+                    'login': False,
+                    },
                 submitted={
                     'url': '/submitted?id=%s',
                     'saved': 'data/hn_submitted.json',
+                    'max_page': 0,
                     'login': True,
                     }, 
                 upvoted={
                     'url': '/upvoted?id=%s',
                     'saved': 'data/hn_upvoted.json',
+                    'max_page': 0,
                     'login': True,
                     }, 
                 favorite={
                     'url': '/favorites?id=%s',
                     'saved': 'data/hn_favorite.json',
+                    'max_page': 0,
                     'login': True,
                     },
                 )
@@ -113,15 +158,36 @@ class HnData:
         self.all_posts = {k: {} for k in self.pages}
 
     def load_posts(self, page_type):
-        with open('data/hn_%s.json' % page_type, 'r') as f:
+        with open(self.pages[page_type]['saved'], 'r') as f:
             self.all_posts[page_type] = json.loads(f.read())
+
+
+def absolute_time(relative_time):
+    if not relative_time:
+        return ''
+
+    m = re.match('\d+', relative_time)
+    if not m:
+        return relative_time
+
+    d = int(m[0])
+    now = datetime.datetime.now()
+    ms = dict(
+            minute=('minutes', d, '%H:%M %b %d, %Y'),
+            hour=('hours', d, '%H:%M %b %d, %Y'),
+            day=('days', d, '%b %d, %Y'),
+            month=('days', d*30, '%b %d, %Y'),
+    )
+
+    for s, (k, v, f) in ms.items():
+        if s in relative_time:
+            return (now - datetime.timedelta(**{k:v})).strftime(f)
+    return relative_time
 
 
 # https://github.com/nicksergeant/hackernews/blob/master/hackernews.py
 class HnCrawler:
     def __init__(self):
-        self.max_page = 1
-
         self.cookies = None
         self.cookie_file = os.path.join('data', 'hn.cookie')
         self.hn_data = HnData()
@@ -151,6 +217,12 @@ class HnCrawler:
             pickle.dump(self.cookies, f)
         return True
 
+    def get_username(self):
+        if self.cookies:
+            return self.cookies.get('user').split('&')[0]
+
+        return ''
+
     def crawle(self, url):
         r = self.request('get', url)
         return r
@@ -159,8 +231,11 @@ class HnCrawler:
         for k, v in self.hn_data.pages.items():
             self.save(v['url'], k)
 
-    def save(self, url, page_type, page=0):
-        if page == self.max_page:
+    def save(self, url, page_type, 
+             page=0, incremental=False, refresh=False):
+        page_meta = self.hn_data.pages[page_type]
+        max_page = page_meta['max_page']
+        if max_page > 0 and page == max_page:
             return
 
         r = self.crawle(url)
@@ -169,22 +244,33 @@ class HnCrawler:
         
         soup = parse_resp(r)
         athing_els = soup.select('.athing')
+        subtext_els = soup.select('.subtext')
         title_els = soup.select('.storylink')
         rank_els = soup.select('.rank')
         age_els = soup.select('.age')
         comment_els = soup.select('.subtext')
         more_el = soup.select('.morelink')
+        end_request = False
 
-        posts = {}
-        json_file = self.hn_data.pages[page_type]['saved']
-        if os.path.exists(json_file):
+        posts = []
+        latest_post = None
+        json_file = page_meta['saved']
+        if not refresh and os.path.exists(json_file):
             with open(json_file, 'r') as f:
                 posts = json.loads(f.read())
+                latest_post = posts[0]
+            if incremental:
+                posts.reverse()
+
+        logger.info('---')
+        logger.info(page_type)
+        logger.info(len(title_els))
          
         for i, t in enumerate(title_els):
            # if t.atts['href'] in posts:
            #    continue
 
+            url = t.attrs['href']
             c_cnt = 0
             c_url = ''
             c_el = comment_els[i].select('a')[-1]
@@ -194,26 +280,44 @@ class HnCrawler:
             if 'discuss' in c_el.text:
                 c_url = c_el.attrs['href']
             site_el = athing_els[i].select_one('.sitebit')
-            score_el = athing_els[i].select_one('.score')
-            author_el = athing_els[i].select_one('.hnuser')
+            score_el = subtext_els[i].select_one('.score')
+            author_el = subtext_els[i].select_one('.hnuser')
+            age = absolute_time(age_els[i].text)
 
-            posts[t.attrs['href']] = dict(
+            logger.info('---')
+            logger.info(page_type)
+            logger.info(url)
+
+            if incremental and latest_post and url == latest_post['url']:
+                end_request = True
+                break
+
+            posts.append(dict(
+                    url=url,
                     title=t.text,
                     rank=int(rank_els[i].text[:-1]),
                     site=site_el.text if site_el else '',
                     score=int(score_el.text.split(' ')[0]) if score_el else 0,
                     auther=author_el.text if author_el else '',
-                    age=age_els[i].text,
+                    age=age,
                     comment_cnt=c_cnt,
                     comment_url=c_url,
-            )
+            ))
 
         with open(json_file, 'w') as f:
+            if incremental:
+                posts.reverse()
             f.write(json.dumps(posts))
 
-        if more_el:
+        if more_el and not end_request:
             url = more_el[0].attrs['href']
-            self.save('/%s' % url, page_type, page+1)
+            self.save('/%s' % url, page_type, 
+                    page+1, incremental=incremental, refresh=False)
+
+    def can_incremental(self, page_type):
+        page_meta = self.hn_data.pages[page_type]
+        json_file = page_meta['saved']
+        return page_meta['login'] and os.path.exists(json_file)
 
     def request(self, method, url, data=None):
         kwargs = dict(
@@ -240,7 +344,7 @@ class HnAnalyze:
             self.model = pickle.load(f)
 
     def assoc_cat(self, posts):
-        for k, v in posts.items():
+        for v in posts:
             cat = self.classify([v['title']])[0]
             v['cat'] = cat
 

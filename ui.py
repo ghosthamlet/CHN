@@ -75,10 +75,10 @@ class HnPile(urwid.Pile):
 
 def create_list(page_type, choices):
     body = [urwid.Text(page_type, align='center'), urwid.Divider()]
-    for url, p in choices:
+    for p in choices:
         title = '%s. [%s] %s' % (p['rank'], p['cat'], p['title'])
         button = HnListItem(title)
-        urwid.connect_signal(button, 'click', list_item_chosen, url)
+        urwid.connect_signal(button, 'click', list_item_chosen, p['url'])
         infos = urwid.Columns([
             urwid.Text('%s points' % p['score']),
             urwid.Text('by %s' % p['auther']),
@@ -179,7 +179,24 @@ class PageBtns(Component):
 class Header(Component):
     def render_menu(self, choices):
         body = []
-        choices = ['All', *choices]
+        sortes = [
+                'default',
+                'score',
+                'comment'
+                ]
+        body.append(urwid.Text('Sort:'))
+        for c in sortes:
+            button = HnButton(c)
+            urwid.connect_signal(button, 'click', lambda el, choice: self.on_select_sort(choice), c)
+            body.append(urwid.AttrMap(button, None, focus_map='reversed'))
+
+        choices = [
+                'all', 
+                *choices
+        ]
+
+        body.append(urwid.Text(''))
+        body.append(urwid.Text('Cat:'))
         for c in choices:
             button = HnButton(c)
             urwid.connect_signal(button, 'click', lambda el, choice: self.on_select_cat(choice), c)
@@ -194,9 +211,12 @@ class Header(Component):
         key = re.sub('\(.+\)', '', choice)
         self.props['on_select_cat'](key)
 
+    def on_select_sort(self, choice):
+        self.props['on_select_sort'](choice)
+
     def render(self):
         posts = {}
-        for _, p in self.props['posts'].items():
+        for p in self.props['posts']:
             if p['cat'] not in posts:
                 posts[p['cat']] = 1
             else:
@@ -214,10 +234,7 @@ class Header(Component):
 
 class Posts(Component):
     def render(self):
-        choices = []
-        posts_sorted = sorted(self.props['posts'].items(), key=lambda x: x[1]['rank'])
-
-        return urwid.Padding(create_list(self.props['page_type'], posts_sorted), left=1, right=1)
+        return urwid.Padding(create_list(self.props['page_type'], self.props['posts']), left=1, right=1)
 
 
 class Help(Component):
@@ -246,9 +263,11 @@ class App(Component):
 
         self.state = dict(
                 current_page_type='hot',
-                current_cat='All',
+                current_cat='all',
+                current_sort='default',
+                current_sort_dir='desc',
                 search_keyword='',
-                username='',
+                username=self.crawle.get_username(),
                 password='',
                 is_login=not not self.crawle.cookies,
                 all_posts={},
@@ -261,10 +280,10 @@ class App(Component):
         urwid.connect_signal(self.root_el, 'trigger_help', lambda el: self.trigger_help())
         urwid.connect_signal(self.root_el, 'trigger_focus_top', lambda el: self.trigger_focus_top())
 
-    def init(self, crawler_new=False):
+    def init(self, refresh=True):
         current_page_type = self.state['current_page_type']
-        if crawler_new:
-            self.crawle.save(self.hn_data.pages[current_page_type]['url'], current_page_type)
+        self.crawle.save(self.hn_data.pages[current_page_type]['url'], 
+                current_page_type, refresh=refresh)
         
         self.load_posts(current_page_type)
 
@@ -277,7 +296,7 @@ class App(Component):
         self.set_state({'all_posts': {page_type: posts}, 'loading': False})
 
     def get_posts(self, page_type):
-        return self.state['all_posts'].get(page_type, {})
+        return self.state['all_posts'].get(page_type, [])
 
     def on_login(self):
         self.crawle.login(self.state['username'], self.state['password'])
@@ -289,14 +308,23 @@ class App(Component):
     def on_select_cat(self, cat):
         self.set_state({'current_cat': cat})
 
+    def on_select_sort(self, sort):
+        sort_dir = 'asc' if self.state['current_sort_dir'] == 'desc' else 'desc'
+        self.set_state({'current_sort': sort, 'current_sort_dir': sort_dir})
+
+    # FIXME: event binded and run multi times parallel, see data/ui.log
     def on_select_page(self, page_type):
+        if self.state['loading']:
+            return
+
         self.set_state({'loading': True, 'loading_content': page_type})
 
         def bgf():
             page_meta = self.hn_data.pages[page_type]
             url = page_meta['url'] % self.state['username'] if page_meta['login'] else page_meta['url']
             logger.info('select page: %s' % url)
-            self.crawle.save(url, page_type)
+            self.crawle.save(url, page_type, 
+                    incremental=self.crawle.can_incremental(page_type), refresh=not page_meta['login'])
             logger.info('page saved: %s' % url)
             self.load_posts(page_type)
             self.set_state({'current_page_type': page_type})
@@ -355,20 +383,30 @@ class App(Component):
 
         is_login = self.state['is_login']
         current_cat = self.state['current_cat']
+        current_sort = self.state['current_sort']
         search_keyword = self.state['search_keyword']
         current_page_type = self.state['current_page_type']
         posts = self.get_posts(current_page_type)
+
+        if current_sort != 'default':
+            sort_map = dict(
+                    score='score',
+                    comment='comment_cnt',
+                    )
+            posts = sorted(posts, key=lambda x: x[sort_map[current_sort]], 
+                    reverse=self.state['current_sort_dir'] == 'desc')
+
         if search_keyword:
             ks = search_keyword.split(' ')
             fn = lambda t: any(map(lambda k: k and k in t, ks))
-            posts_searched = {url:p for url, p in posts.items()
+            posts_searched = [p for p in posts
                               if fn(p['title'].lower())
                               or fn(p['cat'].lower())
-                              or fn(p['auther'].lower())}
+                              or fn(p['auther'].lower())]
         else:
             posts_searched = posts
-        posts_filtered = {url:p for url, p in posts_searched.items()
-                          if p['cat'] == current_cat or current_cat == 'All'}
+        posts_filtered = [p for p in posts_searched
+                          if p['cat'] == current_cat or current_cat == 'all']
 
         loading_el = urwid.ListBox([urwid.Text('CHN', align='center')])
         loading_el = urwid.AttrMap(loading_el, 'reversed')
@@ -384,7 +422,8 @@ class App(Component):
         page_btns_el = React.create_element(PageBtns, 'page_btns', 
                 is_login=is_login, pages=self.hn_data.pages,
                 on_select_page=self.on_select_page)
-        header_el = React.create_element(Header, 'header', posts=posts_searched, on_select_cat=self.on_select_cat)
+        header_el = React.create_element(Header, 'header', posts=posts_searched, 
+                on_select_cat=self.on_select_cat, on_select_sort=self.on_select_sort)
         posts_el = React.create_element(Posts, 'posts',
                 posts=posts_filtered, page_type=current_page_type)
         # body_el = urwid.ListBox([urwid.Columns([header_el, posts_el])])
