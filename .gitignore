@@ -1,0 +1,5 @@
+hn*
+*.log
+.ipynb_checkpoints/
+*.swp
+__pycache__/
