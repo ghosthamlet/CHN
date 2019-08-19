@@ -37,7 +37,7 @@ logger.setLevel(logging.INFO)
 
 class HnButton(urwid.Button):
     button_left = urwid.Text('')
-    button_right = urwid.Text('')
+    button_right = urwid.Text('|')
 
 
 class HnListItem(urwid.Button):
@@ -74,7 +74,7 @@ class HnPile(urwid.Pile):
 
 
 def create_list(page_type, choices):
-    body = [urwid.Text(page_type), urwid.Divider()]
+    body = [urwid.Text(page_type, align='center'), urwid.Divider()]
     for url, p in choices:
         title = '%s. [%s] %s' % (p['rank'], p['cat'], p['title'])
         button = HnListItem(title)
@@ -123,7 +123,7 @@ class LoginForm(Component):
         focus_el = urwid.SimpleFocusListWalker([self.username_el, self.password_el, 
             submit_el, *self.render_search_form()])
         # have to wrap Columns/GridFlow in ListBox, or Pile can't work
-        return urwid.ListBox([urwid.Columns(focus_el)])
+        return urwid.ListBox([urwid.Columns(focus_el), urwid.Divider('-')])
 
     def on_click_login(self):
         username = self.username_el.edit_text.strip()
@@ -146,7 +146,9 @@ class LoginForm(Component):
 
     def render(self):
         if self.props['is_login']:
-            login_el = urwid.ListBox([urwid.Columns([urwid.Text(self.props['username'] or 'Logged'), *self.render_search_form()])])
+            login_el = urwid.ListBox([
+                urwid.Columns([urwid.Text(self.props['username'] or 'Logged'), *self.render_search_form()]), 
+                urwid.Divider('-')])
         else:
             login_el = self.render_login_form()
 
@@ -165,13 +167,13 @@ class PageBtns(Component):
             if not self.props['is_login'] and meta['login']:
                 continue
 
-            button = urwid.Button(page_type)
+            button = HnButton(page_type)
             urwid.connect_signal(button, 'click', lambda el, choice: self.on_select_page(choice), page_type)
             body.append(urwid.AttrMap(button, None, focus_map='reversed'))
 
         focus_el = urwid.SimpleFocusListWalker(body)
         # have to wrap Columns/GridFlow in ListBox, or Pile can't work
-        return urwid.ListBox([urwid.Columns(focus_el)])
+        return urwid.ListBox([urwid.Columns(focus_el), urwid.Divider('-')])
 
 
 class Header(Component):
@@ -179,13 +181,14 @@ class Header(Component):
         body = []
         choices = ['All', *choices]
         for c in choices:
-            button = urwid.Button(c)
+            button = HnButton(c)
             urwid.connect_signal(button, 'click', lambda el, choice: self.on_select_cat(choice), c)
             body.append(urwid.AttrMap(button, None, focus_map='reversed'))
 
         focus_el = urwid.SimpleFocusListWalker(body)
         # have to wrap Columns/GridFlow in ListBox, or Pile can't work
-        return urwid.ListBox([urwid.Columns(focus_el)])
+        # return urwid.ListBox([urwid.Columns(focus_el)])
+        return urwid.ListBox(focus_el)
 
     def on_select_cat(self, choice):
         key = re.sub('\(.+\)', '', choice)
@@ -202,10 +205,10 @@ class Header(Component):
 
         choices = []
         # for cat in self.analyze.model.classes_[:6]:
-        for cat, cnt in posts[:6]:
+        for cat, cnt in posts:
             if cnt > 0:
                 choices.append('%s(%s)' % (cat, cnt))
-        header_el = urwid.Padding(self.render_menu(choices), left=1, right=1)
+        header_el = self.render_menu(choices)
         return header_el
 
 
@@ -384,13 +387,16 @@ class App(Component):
         header_el = React.create_element(Header, 'header', posts=posts_searched, on_select_cat=self.on_select_cat)
         posts_el = React.create_element(Posts, 'posts',
                 posts=posts_filtered, page_type=current_page_type)
+        # body_el = urwid.ListBox([urwid.Columns([header_el, posts_el])])
+        body_el = urwid.Columns([('weight', 2, header_el), ('weight', 10, posts_el)])
 
         return [
             (loading_el, ('weight', .2)), 
             (self.login_el, ('weight', .5)), 
             (page_btns_el, ('weight', .5)), 
-            (header_el, ('weight', .5)),
-            (posts_el, ('weight', 10))
+            # (header_el, ('weight', .5)),
+            # (posts_el, ('weight', 10))
+            (body_el, ('weight', 10))
         ]
 
 
