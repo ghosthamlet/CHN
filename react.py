@@ -23,7 +23,10 @@ class Component:
             # TODO: just render self
             # self.contents = self.render()
             if _APP is not None:
-                _ROOT_EL.contents = _APP.render()
+                self.mount(_APP.render())
+
+    def mount(self, el):
+        _ROOT_EL.contents = el
 
     def component_did_mount(self):
         pass
@@ -59,6 +62,15 @@ class ReactConsole:
     def render(app, root_el):
         global _APP, _ROOT_EL
         _ROOT_EL = root_el
-        _APP, _ROOT_EL.contents = app
-        urwid.MainLoop(_ROOT_EL, palette=[('reversed', 'standout', '')]).run()
+        _APP, el = app
+        _APP.mount(el)
+        palette = [
+                ('reversed', 'standout', ''),
+                ('loading', 'yellow', 'dark green'),
+                ('headings', 'white,underline', 'black', 'bold,underline'),
+                ('body_text', 'dark cyan', 'light gray'),
+                ('buttons', 'yellow', 'dark green', 'standout'),
+                ('section_text', 'body_text'),
+        ]
+        urwid.MainLoop(_ROOT_EL, palette=palette).run()
 

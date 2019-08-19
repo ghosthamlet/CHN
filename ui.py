@@ -4,6 +4,7 @@ import sys
 import re
 import logging
 import threading
+import time
 
 import urwid
 
@@ -59,21 +60,17 @@ class HnEdit(urwid.Edit):
 
 
 class HnPile(urwid.Pile):
-    signals = ['focus_search', 'trigger_help']
+    signals = ['focus_search', 'trigger_help', 'trigger_focus_top']
 
     def keypress(self, size, key):
         super().keypress(size, key)
 
-        login_pos = 0
-        focus = self.focus_position
-        is_focus_login = focus == login_pos
-
-        if not is_focus_login:
-            if key == 's':
-                self.focus_position = 0
-                self._emit('focus_search')
-            elif key == 'h':
-                self._emit('trigger_help')
+        if key == 's':
+            self._emit('focus_search')
+        elif key == 'h':
+            self._emit('trigger_help')
+        elif key == 't':
+            self._emit('trigger_focus_top')
 
 
 def create_list(page_type, choices):
@@ -138,10 +135,10 @@ class LoginForm(Component):
         self.props['on_login']()
 
     def render_search_form(self):
-        self.search_el = urwid.Edit('Keyword: ', edit_text=self.props['search_keyword'])
-        submit_search_el = urwid.Button('Search')
-        urwid.connect_signal(submit_search_el, 'click', lambda button: self.on_click_search())
-        return self.search_el, submit_search_el
+        self.search_el = HnEdit('Keyword: ', edit_text=self.props['search_keyword'])
+
+        urwid.connect_signal(self.search_el, 'click', lambda button: self.on_click_search())
+        return self.search_el,
 
     def on_click_search(self):
         keyword = self.search_el.edit_text.strip().lower()
@@ -223,12 +220,12 @@ class Posts(Component):
 class Help(Component):
     TEXT = '''
     Help:
-        shortcuts:
         h: show/close this screen
-        s: goto input search keyword
+        s: goto search keyword, use space to seperate multi keywords
+        t: goto select page type, or go back to posts
     '''
     def render(self):
-        return urwid.ListBox([urwid.Text(Help.Text)])
+        return urwid.ListBox([urwid.Text(Help.TEXT)])
 
 
 # TODO: add translation option for titles
@@ -242,6 +239,7 @@ class App(Component):
         self.hn_data = HnData()
         self.crawle  = HnCrawler()
         self.analyze = HnAnalyze()
+        self.loading_thread = None
 
         self.state = dict(
                 current_page_type='hot',
@@ -253,10 +251,12 @@ class App(Component):
                 all_posts={},
                 show_help=False,
                 loading=True,
+                loading_content='',
         )
 
         urwid.connect_signal(self.root_el, 'focus_search', lambda el: self.focus_search())
         urwid.connect_signal(self.root_el, 'trigger_help', lambda el: self.trigger_help())
+        urwid.connect_signal(self.root_el, 'trigger_focus_top', lambda el: self.trigger_focus_top())
 
     def init(self, crawler_new=False):
         current_page_type = self.state['current_page_type']
@@ -287,7 +287,7 @@ class App(Component):
         self.set_state({'current_cat': cat})
 
     def on_select_page(self, page_type):
-        self.set_state({'current_page_type': page_type, 'loading': True})
+        self.set_state({'loading': True, 'loading_content': page_type})
 
         def bgf():
             page_meta = self.hn_data.pages[page_type]
@@ -296,26 +296,46 @@ class App(Component):
             self.crawle.save(url, page_type)
             logger.info('page saved: %s' % url)
             self.load_posts(page_type)
+            self.set_state({'current_page_type': page_type})
 
-        t = threading.Thread(target=bgf)
-        t.start()
-        t.join()
+        self.loading_thread = threading.Thread(target=bgf)
+        self.loading_thread.start()
+        # FIXME: join will frozen ui, and can't show loading progress,
+        #        but then ui have to update while manual move cursor without join()
+        # self.loading_thread.join()
 
     def focus_search(self):
-        if self.state['loading']:
+        if self.state['loading'] or self.state['show_help'] or self.is_focus_login():
             return
 
-        self.root_el.focus_position = 0
+        self.focus_login()
         if self.state['is_login']:
             self.login_el.contents()[0][0].focus_position = 1
         else:
             self.login_el.contents()[0][0].focus_position = 3
 
     def trigger_help(self):
-        if self.state['loading']:
+        if self.state['loading'] or self.is_focus_login():
             return
 
         self.set_state({'show_help': not self.state['show_help']})
+        if not self.state['show_help']:
+            self.root_el.focus_position = 2
+
+    def trigger_focus_top(self):
+        if self.state['loading'] or self.state['show_help'] or self.is_focus_login():
+            return
+
+        if self.root_el.focus_position != 2:
+            self.root_el.focus_position = 2
+        else:
+            self.root_el.focus_position = len(self.root_el.contents) - 1
+
+    def is_focus_login(self):
+        return self.root_el.focus_position == 1 and len(self.root_el.contents) > 1
+
+    def focus_login(self):
+        self.root_el.focus_position = 1
 
     def set_username(self, s):
         self.set_state({'username': s}, disable_render=True)
@@ -333,16 +353,25 @@ class App(Component):
         is_login = self.state['is_login']
         current_cat = self.state['current_cat']
         search_keyword = self.state['search_keyword']
-        posts = self.get_posts(self.state['current_page_type'])
+        current_page_type = self.state['current_page_type']
+        posts = self.get_posts(current_page_type)
         if search_keyword:
+            ks = search_keyword.split(' ')
+            fn = lambda t: any(map(lambda k: k and k in t, ks))
             posts_searched = {url:p for url, p in posts.items()
-                              if search_keyword in p['title'].lower() 
-                              or search_keyword in p['cat'].lower()
-                              or search_keyword in p['auther'].lower()}
+                              if fn(p['title'].lower())
+                              or fn(p['cat'].lower())
+                              or fn(p['auther'].lower())}
         else:
             posts_searched = posts
         posts_filtered = {url:p for url, p in posts_searched.items()
                           if p['cat'] == current_cat or current_cat == 'All'}
+
+        loading_el = urwid.ListBox([urwid.Text('CHN', align='center')])
+        loading_el = urwid.AttrMap(loading_el, 'reversed')
+        if self.state['loading']:
+            loading_el = urwid.ListBox([urwid.Text('Loading %s...' % self.state['loading_content'], align='center')])
+            loading_el = urwid.AttrMap(loading_el, 'loading')
 
         self.login_el = React.create_element(LoginForm, 'login', 
                 is_login=is_login, on_login=self.on_login, 
@@ -353,13 +382,11 @@ class App(Component):
                 is_login=is_login, pages=self.hn_data.pages,
                 on_select_page=self.on_select_page)
         header_el = React.create_element(Header, 'header', posts=posts_searched, on_select_cat=self.on_select_cat)
-        if self.state['loading']:
-            posts_el = urwid.ListBox([urwid.Text('Loading...')])
-        else:
-            posts_el = React.create_element(Posts, 'posts',
-                    posts=posts_filtered, page_type=self.state['current_page_type'])
+        posts_el = React.create_element(Posts, 'posts',
+                posts=posts_filtered, page_type=current_page_type)
 
         return [
+            (loading_el, ('weight', .2)), 
             (self.login_el, ('weight', .5)), 
             (page_btns_el, ('weight', .5)), 
             (header_el, ('weight', .5)),
