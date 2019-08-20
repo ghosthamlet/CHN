@@ -6,6 +6,7 @@ import logging
 import threading
 import time
 import webbrowser
+import locale
 
 import urwid
 
@@ -13,9 +14,11 @@ from chn import HnData, HnClient, HnAnalyze
 
 from react import React, ReactConsole, Component 
 import utils
+import config
 
 
 logger = utils.get_logger()
+locale.setlocale(locale.LC_TIME, 'en_US.UTF-8')
 
 
 class HnButton(urwid.Button):
@@ -122,8 +125,18 @@ class LoginForm(Component):
 
 
 class PageBtns(Component):
+    def __init__(self, **props):
+        super().__init__(**props)
+        
+        self.container_el = None
+        self.focus_position = 0
+
     def on_select_page(self, page_type):
+        self.save_focus_position()
         self.props['on_select_page'](page_type)
+
+    def save_focus_position(self):
+        self.focus_position = self.container_el.contents()[0][0].focus_position
 
     def render(self):
         body = []
@@ -139,16 +152,26 @@ class PageBtns(Component):
 
         focus_el = urwid.SimpleFocusListWalker(body)
         # have to wrap Columns/GridFlow in ListBox, or Pile can't work
-        return urwid.ListBox([urwid.Columns(focus_el), urwid.Divider('-')])
+        self.container_el = urwid.ListBox([urwid.Columns(focus_el), urwid.Divider('-')])
+        self.container_el.contents()[0][0].focus_position = self.focus_position
+
+        return self.container_el
 
 
 class SideBar(Component):
+    def __init__(self, **props):
+        super().__init__(**props)
+        
+        self.container_el = None
+        self.focus_position = 0
+
     def render_menu(self, choices):
         body = []
         sortes = [
                 'default',
                 'score',
-                'comment'
+                'comment',
+                'created'
                 ]
         body.append(urwid.Text('Sort:'))
         for c in sortes:
@@ -157,7 +180,7 @@ class SideBar(Component):
             body.append(urwid.AttrMap(button, None, focus_map='reversed'))
 
         choices = [
-                'all', 
+                'all(%s)' % len(self.props['posts']), 
                 *choices
         ]
 
@@ -174,11 +197,16 @@ class SideBar(Component):
         return urwid.ListBox(focus_el)
 
     def on_select_cat(self, choice):
+        self.save_focus_position()
         key = re.sub('\(.+\)', '', choice)
         self.props['on_select_cat'](key)
 
     def on_select_sort(self, choice):
+        self.save_focus_position()
         self.props['on_select_sort'](choice)
+
+    def save_focus_position(self):
+        self.focus_position = self.container_el.focus_position
 
     def render(self):
         posts = {}
@@ -194,14 +222,17 @@ class SideBar(Component):
         for cat, cnt in posts:
             if cnt > 0:
                 choices.append('%s(%s)' % (cat, cnt))
-        return self.render_menu(choices)
+        self.container_el = self.render_menu(choices)
+        self.container_el.focus_position = self.focus_position
+
+        return self.container_el
 
 
 class Posts(Component):
     def create_list(self, page_type, choices):
         upvoteds = [utils.get_post_identity(v) for v in self.props['posts_upvoted']]
         favorites = [utils.get_post_identity(v) for v in self.props['posts_favorite']]
-        body = [urwid.Text(page_type, align='center'), urwid.Divider()]
+        body = [urwid.AttrMap(urwid.Text(page_type, align='center'), 'section_header'), urwid.Divider()]
 
         for i, p in enumerate(choices):
             identity = utils.get_post_identity(p)
@@ -250,13 +281,22 @@ class Posts(Component):
 
 class Help(Component):
     TEXT = '''
-    Help:
+    HELP:
+        SHORTCUTS:
         h: show/close this screen
         s: goto search keyword, use space to seperate multi keywords
         t: goto select page type, or go back to posts
-        r: refresh posts
         v: upvote current post(NOTE: you have to view/load upvoted page first)
         o: favorite current post(NOTE: you have to view/load favorite page first)
+        r: refresh posts
+
+        NOTICE:
+        0. login is safe, just cookies will save on your computer, 
+           accounts will not save, not send to any servers. 
+        1. use arrows to navigate
+        2. sometimes after loading new page, ui maybe frozen, hit t to activate it
+        3. load submitted/upvoted/favorite pages maybe very slow first time if you have many data, 
+           but after first load it will be fast
     '''
     def render(self):
         return urwid.ListBox([urwid.Text(Help.TEXT)])
@@ -308,6 +348,9 @@ class App(Component):
     def load_posts(self, page_type):
         self.hn_data.load_posts(page_type)
         posts = self.hn_data.all_posts[page_type]
+        if not posts:
+            return
+
         self.analyze.assoc_cat(posts)
         logger.info('loaded posts: %s' % len(posts))
 
@@ -497,10 +540,11 @@ class App(Component):
 
         if current_sort != 'default':
             sort_map = dict(
-                    score='score',
-                    comment='comment_cnt',
+                    score=lambda x: x['score'],
+                    comment=lambda x: x['comment_cnt'],
+                    created=lambda x: utils.string_to_datetime(x['age']),
                     )
-            posts = sorted(posts, key=lambda x: x[sort_map[current_sort]], 
+            posts = sorted(posts, key=lambda x: sort_map[current_sort](x),
                     reverse=self.state['current_sort_dir'] == 'desc')
 
         if search_keyword:
@@ -509,16 +553,19 @@ class App(Component):
             posts_searched = [p for p in posts
                               if fn(p['title'].lower())
                               or fn(p['cat'].lower())
-                              or fn(p['auther'].lower())]
+                              or fn(p['auther'].lower())
+                              or fn(p['site'].lower())]
         else:
             posts_searched = posts
         posts_filtered = [p for p in posts_searched
                           if p['cat'] == current_cat or current_cat == 'all']
 
-        loading_el = urwid.ListBox([urwid.Text(('reversed', 'CHN'), align='center')])
+        loading_el = urwid.ListBox([urwid.Text(config.app_name, align='center')])
+        loading_el = urwid.AttrMap(loading_el, 'page_title')
         if self.state['loading']:
             s = 'Loading %s...' % self.state['loading_content']
-            loading_el = urwid.ListBox([urwid.Text(('loading', s), align='center')])
+            loading_el = urwid.ListBox([urwid.Text(s, align='center')])
+            loading_el = urwid.AttrMap(loading_el, 'loading')
 
         self.login_el = React.create_element(LoginForm, 'login', 
                 is_login=is_login, on_login=self.on_login, 
@@ -546,11 +593,13 @@ class App(Component):
 
 
 palette = [
-        ('reversed', 'standout', ''),
+        ('page_title', 'bold', 'dark gray'),
+        ('reversed', '', 'dark gray'),
         ('loading', 'yellow', 'dark green'),
         ('cat', 'dark green', ''),
         ('subtext', 'dark gray', ''),
         ('highlight', 'dark red', ''),
+        ('section_header', 'bold', 'black'),
 
         ('headings', 'white,underline', 'black', 'bold,underline'),
         ('body_text', 'dark cyan', 'light gray'),

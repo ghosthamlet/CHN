@@ -1,49 +1,57 @@
 #coding=utf8
 
+app_name = 'CHN'
 proxy_host = '127.0.0.1:19180'
 hn_domain = 'https://news.ycombinator.com'
+hn_datetime_format = '%H:%M %b %d, %Y'
+hn_date_format = '%b %d, %Y'
 
 hn_pages = dict(
         hot={
             'url': '/',
             'saved': 'data/hn_hot.json',
-            'max_page': 2,
+            'max_page': 3,
             'login': False,
             }, 
         lastest={
             'url': '/newest',
             'saved': 'data/hn_lastest.json',
-            'max_page': 10,
+            #'max_page': 10,
+            'max_page': 3,
             'login': False,
             }, 
         past={
             'url': '/front',
             'saved': 'data/hn_past.json',
-            'max_page': 10,
+            #'max_page': 10,
+            'max_page': 3,
             'login': False,
             }, 
         ask={
             'url': '/ask',
             'saved': 'data/hn_ask.json',
-            'max_page': 10,
+            #'max_page': 10,
+            'max_page': 3,
             'login': False,
             },
         show={
             'url': '/show',
             'saved': 'data/hn_show.json',
-            'max_page': 10,
+            #'max_page': 10,
+            'max_page': 3,
             'login': False,
             },
         jobs={
             'url': '/jobs',
             'saved': 'data/hn_jobs.json',
-            'max_page': 10,
+            #'max_page': 10,
+            'max_page': 3,
             'login': False,
             },
         submitted={
             'url': '/submitted?id=%s',
             'saved': 'data/hn_submitted.json',
-            'max_page': 0,
+            'max_page': 10,
             'login': True,
             }, 
         upvoted={

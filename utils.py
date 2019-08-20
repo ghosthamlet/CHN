@@ -3,8 +3,11 @@
 import re
 import logging
 import datetime
+import dateutil.parser
 
 import requests
+
+import config
 
 
 def get_logger(name=''):
@@ -35,16 +38,22 @@ def absolute_time(relative_time):
     d = int(m[0])
     now = datetime.datetime.now()
     ms = dict(
-            minute=('minutes', d, '%H:%M %b %d, %Y'),
-            hour=('hours', d, '%H:%M %b %d, %Y'),
-            day=('days', d, '%b %d, %Y'),
-            month=('days', d*30, '%b %d, %Y'),
+            minute=('minutes', d, config.hn_datetime_format),
+            hour=('hours', d, config.hn_datetime_format),
+            day=('days', d, config.hn_date_format),
+            month=('days', d*30, config.hn_date_format),
     )
 
     for s, (k, v, f) in ms.items():
         if s in relative_time:
             return (now - datetime.timedelta(**{k:v})).strftime(f)
     return relative_time
+
+
+def string_to_datetime(s):
+    # return datetime.datetime.strptime(s, 
+    #            config.hn_datetime_format if ':' in s else config.hn_date_format)
+    return dateutil.parser.parse(s)
 
 
 def get_post_identity(post):

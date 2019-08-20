@@ -97,7 +97,7 @@ class HnClient:
         if r is None:
             return
         
-        soup = BeautifulSoup(r.content, features="lxml")
+        soup = BeautifulSoup(r.content.decode('utf-8', 'ignore'), features="lxml")
         athing_els = soup.select('.athing')
         subtext_els = soup.select('.subtext')
         title_els = soup.select('.storylink')
@@ -144,7 +144,7 @@ class HnClient:
                 author_el = subtext_els[i].select_one('.hnuser')
             age = ''
             if len(age_els) > i:
-                age = utils.absolute_time(age_els[i].text)
+                age = utils.absolute_time(age_els[i].text.replace('on ', ''))
             vote_a_el = vote_el.select_one('a') if vote_el else None
             vote_url = vote_a_el.attrs['href'] if vote_a_el else ''
 
