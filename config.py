@@ -1,9 +1,69 @@
 #coding=utf8
 
 proxy_host = '127.0.0.1:19180'
+hn_domain = 'https://news.ycombinator.com'
+
+hn_pages = dict(
+        hot={
+            'url': '/',
+            'saved': 'data/hn_hot.json',
+            'max_page': 2,
+            'login': False,
+            }, 
+        lastest={
+            'url': '/newest',
+            'saved': 'data/hn_lastest.json',
+            'max_page': 10,
+            'login': False,
+            }, 
+        past={
+            'url': '/front',
+            'saved': 'data/hn_past.json',
+            'max_page': 10,
+            'login': False,
+            }, 
+        ask={
+            'url': '/ask',
+            'saved': 'data/hn_ask.json',
+            'max_page': 10,
+            'login': False,
+            },
+        show={
+            'url': '/show',
+            'saved': 'data/hn_show.json',
+            'max_page': 10,
+            'login': False,
+            },
+        jobs={
+            'url': '/jobs',
+            'saved': 'data/hn_jobs.json',
+            'max_page': 10,
+            'login': False,
+            },
+        submitted={
+            'url': '/submitted?id=%s',
+            'saved': 'data/hn_submitted.json',
+            'max_page': 0,
+            'login': True,
+            }, 
+        upvoted={
+            'url': '/upvoted?id=%s',
+            'saved': 'data/hn_upvoted.json',
+            'max_page': 10,
+            'login': True,
+            }, 
+        favorite={
+            'url': '/favorites?id=%s',
+            'saved': 'data/hn_favorite.json',
+            'max_page': 10,
+            'login': True,
+            },
+        )
+
+
+max_retry = 3
 max_items_per_cat = 3000
 skip_cat_when_large_then = 1100
-max_retry = 3
 
 reddit_json_file = 'data/reddit.json'
 reddit_csv_file = 'data/reddit.csv'
@@ -389,6 +449,6 @@ reddit_headers = {
             'TE': 'Trailers',
             }
 
-reddit_skip_text_cat = ['painting']
-reddit_skip_text_domain = ['youtu.be', 'youtube.com', 'imgur.com']
+reddit_skip_cat = ['painting']
+reddit_skip_domain = ['youtu.be', 'youtube.com', 'imgur.com']
 

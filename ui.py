@@ -5,34 +5,17 @@ import re
 import logging
 import threading
 import time
+import webbrowser
 
 import urwid
 
-from chn import HnData, HnCrawler, HnAnalyze
+from chn import HnData, HnClient, HnAnalyze
 
 from react import React, ReactConsole, Component 
+import utils
 
 
-logFormatter = logging.Formatter("%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
-logger = logging.getLogger()
-
-fileHandler = logging.FileHandler("{0}/{1}.log".format('data', 'ui'))
-fileHandler.setFormatter(logFormatter)
-logger.addHandler(fileHandler)
-
-# consoleHandler = logging.StreamHandler()
-# consoleHandler.setFormatter(logFormatter)
-# logger.addHandler(consoleHandler)
-logger.setLevel(logging.INFO)
-# logger.info('')
-
-# logging.basicConfig(
-#     level=logging.INFO,
-#     format="%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s",
-#     handlers=[
-#         logging.FileHandler("{0}/{1}.log".format(logPath, fileName)),
-#         logging.StreamHandler()
-#     ])
+logger = utils.get_logger()
 
 
 class HnButton(urwid.Button):
@@ -43,6 +26,9 @@ class HnButton(urwid.Button):
 class HnListItem(urwid.Button):
     button_left = urwid.Text('')
     button_right = urwid.Text('')
+
+    def set_identity(self, identity):
+        self.identity = identity
 
 
 class HnEdit(urwid.Edit):
@@ -60,7 +46,10 @@ class HnEdit(urwid.Edit):
 
 
 class HnPile(urwid.Pile):
-    signals = ['focus_search', 'trigger_help', 'trigger_focus_top']
+    # upvote favorite just can do in posts not by incremental download
+    # as the the actions maybe used time based token
+    signals = ['focus_search', 'trigger_help', 'trigger_focus_top',
+                'trigger_upvote', 'trigger_favorite', 'refresh']
 
     def keypress(self, size, key):
         super().keypress(size, key)
@@ -71,35 +60,12 @@ class HnPile(urwid.Pile):
             self._emit('trigger_help')
         elif key == 't':
             self._emit('trigger_focus_top')
-
-
-def create_list(page_type, choices):
-    body = [urwid.Text(page_type, align='center'), urwid.Divider()]
-    for p in choices:
-        title = '%s. [%s] %s' % (p['rank'], p['cat'], p['title'])
-        button = HnListItem(title)
-        urwid.connect_signal(button, 'click', list_item_chosen, p['url'])
-        infos = urwid.Columns([
-            urwid.Text('%s points' % p['score']),
-            urwid.Text('by %s' % p['auther']),
-            urwid.Text('%s ' % p['age']),
-            urwid.Text('%s comments' % p['comment_cnt']),
-            ])
-        pile = urwid.Pile([button, infos])
-        body.append(urwid.AttrMap(pile, None, focus_map='reversed'))
-    return urwid.ListBox(urwid.SimpleFocusListWalker(body))
-
-
-def list_item_chosen(button, choice):
-    response = urwid.Text([u'You chose ', choice, u'\n'])
-    done = urwid.Button(u'Ok')
-    urwid.connect_signal(done, 'click', exit_program)
-    main.original_widget = urwid.Filler(urwid.Pile([response,
-        urwid.AttrMap(done, None, focus_map='reversed')]))
-
-
-def exit_program(button):
-    raise urwid.ExitMainLoop()
+        elif key == 'r':
+            self._emit('refresh')
+        elif key == 'v':
+            self._emit('trigger_upvote')
+        elif key == 'o':
+            self._emit('trigger_favorite')
 
 
 class LoginForm(Component):
@@ -176,7 +142,7 @@ class PageBtns(Component):
         return urwid.ListBox([urwid.Columns(focus_el), urwid.Divider('-')])
 
 
-class Header(Component):
+class SideBar(Component):
     def render_menu(self, choices):
         body = []
         sortes = [
@@ -228,13 +194,58 @@ class Header(Component):
         for cat, cnt in posts:
             if cnt > 0:
                 choices.append('%s(%s)' % (cat, cnt))
-        header_el = self.render_menu(choices)
-        return header_el
+        return self.render_menu(choices)
 
 
 class Posts(Component):
+    def create_list(self, page_type, choices):
+        upvoteds = [utils.get_post_identity(v) for v in self.props['posts_upvoted']]
+        favorites = [utils.get_post_identity(v) for v in self.props['posts_favorite']]
+        body = [urwid.Text(page_type, align='center'), urwid.Divider()]
+
+        for i, p in enumerate(choices):
+            identity = utils.get_post_identity(p)
+            is_upvoted = identity  in upvoteds
+            is_favorite = identity in favorites
+            title_el = HnListItem(p['title'])
+            title_el.set_identity(identity)
+            upvote_el = urwid.Text([
+                ('subtext', '^') if not is_upvoted else ' ', 
+                ('highlight', '*') if is_favorite else ' '
+                ])
+            header_el = urwid.Columns([
+                # ('pack', urwid.Text([('subtext', '%s. ' % p['rank']), ('cat', '[%s]' % p['cat'])])),
+                ('pack', urwid.Text(('subtext', '%s. ' % i))),
+                # XXX: button have to use weight
+                # ('weight', .2, upvote_el),
+                ('pack', upvote_el),
+                ('pack', urwid.Text(('cat', '[%s]' % p['cat']))),
+                ('weight', 10, title_el),
+                ('pack', urwid.Text(('subtext', p['site']))),
+            ])
+            urwid.connect_signal(title_el, 'click', self.on_click_title, p['url'])
+
+            subtext_el = urwid.Columns([
+                urwid.Text(' '),
+                urwid.Text('%s points' % p['score']),
+                urwid.Text('by %s' % p['auther']),
+                urwid.Text('%s ' % p['age']),
+                urwid.Text('%s comments' % p['comment_cnt']),
+                ])
+
+            pile_el = urwid.Pile([
+                header_el, 
+                urwid.AttrMap(subtext_el, 'subtext')
+            ])
+            body.append(urwid.AttrMap(pile_el, None, focus_map='reversed'))
+        return urwid.ListBox(urwid.SimpleFocusListWalker(body))
+
+    def on_click_title(self, button, url):
+        url = url if url[:4] == 'http' else '%s/%s' % (config.hn_domain, url)
+        webbrowser.open_new_tab(url)
+
     def render(self):
-        return urwid.Padding(create_list(self.props['page_type'], self.props['posts']), left=1, right=1)
+        return urwid.Padding(self.create_list(self.props['page_type'], self.props['posts']), left=1, right=1)
 
 
 class Help(Component):
@@ -243,6 +254,9 @@ class Help(Component):
         h: show/close this screen
         s: goto search keyword, use space to seperate multi keywords
         t: goto select page type, or go back to posts
+        r: refresh posts
+        v: upvote current post(NOTE: you have to view/load upvoted page first)
+        o: favorite current post(NOTE: you have to view/load favorite page first)
     '''
     def render(self):
         return urwid.ListBox([urwid.Text(Help.TEXT)])
@@ -257,9 +271,8 @@ class App(Component):
         self.login_el = None
 
         self.hn_data = HnData()
-        self.crawle  = HnCrawler()
+        self.client  = HnClient()
         self.analyze = HnAnalyze()
-        self.loading_thread = None
 
         self.state = dict(
                 current_page_type='hot',
@@ -267,9 +280,9 @@ class App(Component):
                 current_sort='default',
                 current_sort_dir='desc',
                 search_keyword='',
-                username=self.crawle.get_username(),
+                username=self.client.get_username(),
                 password='',
-                is_login=not not self.crawle.cookies,
+                is_login=not not self.client.cookies,
                 all_posts={},
                 show_help=False,
                 loading=True,
@@ -279,12 +292,17 @@ class App(Component):
         urwid.connect_signal(self.root_el, 'focus_search', lambda el: self.focus_search())
         urwid.connect_signal(self.root_el, 'trigger_help', lambda el: self.trigger_help())
         urwid.connect_signal(self.root_el, 'trigger_focus_top', lambda el: self.trigger_focus_top())
+        urwid.connect_signal(self.root_el, 'trigger_upvote', lambda el: self.trigger_upvote())
+        urwid.connect_signal(self.root_el, 'trigger_favorite', lambda el: self.trigger_favorite())
+        urwid.connect_signal(self.root_el, 'refresh', lambda el: self.refresh())
 
     def init(self, refresh=True):
         current_page_type = self.state['current_page_type']
-        self.crawle.save(self.hn_data.pages[current_page_type]['url'], 
+        self.client.download_posts(self.hn_data.pages[current_page_type]['url'], 
                 current_page_type, refresh=refresh)
         
+        self.load_posts('upvoted')
+        self.load_posts('favorite')
         self.load_posts(current_page_type)
 
     def load_posts(self, page_type):
@@ -293,13 +311,14 @@ class App(Component):
         self.analyze.assoc_cat(posts)
         logger.info('loaded posts: %s' % len(posts))
 
-        self.set_state({'all_posts': {page_type: posts}, 'loading': False})
+        all_posts = {**self.state['all_posts'], page_type: posts}
+        self.set_state({'all_posts': all_posts, 'loading': False})
 
     def get_posts(self, page_type):
         return self.state['all_posts'].get(page_type, [])
 
     def on_login(self):
-        self.crawle.login(self.state['username'], self.state['password'])
+        self.client.login(self.state['username'], self.state['password'])
         self.set_state({'is_login': True})
 
     def on_search(self, keyword):
@@ -320,20 +339,24 @@ class App(Component):
         self.set_state({'loading': True, 'loading_content': page_type})
 
         def bgf():
-            page_meta = self.hn_data.pages[page_type]
-            url = page_meta['url'] % self.state['username'] if page_meta['login'] else page_meta['url']
-            logger.info('select page: %s' % url)
-            self.crawle.save(url, page_type, 
-                    incremental=self.crawle.can_incremental(page_type), refresh=not page_meta['login'])
-            logger.info('page saved: %s' % url)
+            self.download_posts(page_type)
             self.load_posts(page_type)
+            # XXX: load_posts already change loading, don't set loading again, or ui will forzen
+            # self.set_state({'loading': False, 'current_page_type': page_type})
             self.set_state({'current_page_type': page_type})
 
-        self.loading_thread = threading.Thread(target=bgf)
-        self.loading_thread.start()
-        # FIXME: join will frozen ui, and can't show loading progress,
-        #        but then ui have to update while manual move cursor without join()
+        threading.Thread(target=bgf).start()
+        # join will frozen ui, and can't show loading progress,
+        # let update_screen in set_state to do async update
         # self.loading_thread.join()
+
+    def download_posts(self, page_type):
+        page_meta = self.hn_data.pages[page_type]
+        url = page_meta['url'] % self.state['username'] if page_meta['login'] else page_meta['url']
+        logger.info('select page: %s' % url)
+        self.client.download_posts(url, page_type, 
+                incremental=self.client.can_incremental(page_type), refresh=not page_meta['login'])
+        logger.info('page saved: %s' % url)
 
     def focus_search(self):
         if self.state['loading'] or self.state['show_help'] or self.is_focus_login():
@@ -360,13 +383,97 @@ class App(Component):
         if self.root_el.focus_position != 2:
             self.root_el.focus_position = 2
         else:
-            self.root_el.focus_position = len(self.root_el.contents) - 1
+            self.focus_posts()
+
+    def refresh(self):
+        if self.state['loading'] or self.state['show_help'] or self.is_focus_login():
+            return
+        self.on_select_page(self.state['current_page_type'])
+
+    def trigger_upvote(self):
+        page_meta = self.hn_data.pages[self.state['current_page_type']]
+        if self.state['loading'] \
+                or self.state['show_help'] \
+                or page_meta['login'] \
+                or not self.is_focus_posts():
+            return
+
+        # must get focus data before all set_state, as after rerender, focus lost
+        post = self.get_focus_post()
+
+        self.load_posts('upvoted')
+        posts_upvoted = self.get_posts('upvoted')
+        if not posts_upvoted:
+            return
+
+        self.set_state({'loading': True, 'loading_content': 'updating upvote...'})
+        upvoted = utils.get_post_identity(post) in map(lambda p: utils.get_post_identity(p), posts_upvoted)
+
+        def bgf():
+            self.client.upvote(post, upvoted)
+            if upvoted:
+                self.hn_data.remove_post('upvoted', post)
+            self.download_posts('upvoted')
+            self.load_posts('upvoted')
+            # XXX: load_posts already change loading, don't set loading again, or ui will forzen
+            # self.set_state({'loading': False})
+            # self.refresh()
+
+        threading.Thread(target=bgf).start()
+
+    def trigger_favorite(self):
+        page_meta = self.hn_data.pages[self.state['current_page_type']]
+        if self.state['loading'] \
+                or self.state['show_help'] \
+                or page_meta['login'] \
+                or not self.is_focus_posts():
+            return
+
+        # must get focus data before all set_state, as after rerender, focus lost
+        post = self.get_focus_post()
+
+        self.load_posts('favorite')
+        posts_favorite = self.get_posts('favorite')
+        if not posts_favorite:
+            return
+
+        self.set_state({'loading': True, 'loading_content': 'updating favorite...'})
+        favorited = utils.get_post_identity(post) in map(lambda p: utils.get_post_identity(p), posts_favorite)
+
+        def bgf():
+            self.client.favorite(post, favorited)
+            self.download_posts('favorite')
+            if favorited:
+                self.hn_data.remove_post('favorite', post)
+            self.load_posts('favorite')
+            # XXX: load_posts already change loading, don't set loading again, or ui will forzen
+            # self.set_state({'loading': False})
+            # self.refresh()
+
+        threading.Thread(target=bgf).start()
+
+    def get_focus_post(self):
+        # post_idx = self.root_el.contents[self.posts_focus_postion()][0].contents[1][0].original_widget.focus_position - 1
+        identity = self.root_el.contents[self.posts_focus_postion()][0].contents[1][0].original_widget.get_focus_widgets()[2].identity
+        post = [v for v in self.get_posts(self.state['current_page_type']) if utils.get_post_identity(v) == identity][0]
+        return post
 
     def is_focus_login(self):
         return self.root_el.focus_position == 1 and len(self.root_el.contents) > 1
 
     def focus_login(self):
         self.root_el.focus_position = 1
+
+    def is_focus_posts(self):
+        pos = self.posts_focus_postion()
+        l = len(self.root_el.contents)
+        return self.root_el.focus_position == pos and l > 1 and self.root_el.contents[pos][0].focus_position == 1
+
+    def focus_posts(self):
+        self.root_el.focus_position = self.posts_focus_postion()
+
+    def posts_focus_postion(self):
+        return len(self.root_el.contents) - 1
 
     def set_username(self, s):
         self.set_state({'username': s}, disable_render=True)
@@ -408,11 +515,10 @@ class App(Component):
         posts_filtered = [p for p in posts_searched
                           if p['cat'] == current_cat or current_cat == 'all']
 
-        loading_el = urwid.ListBox([urwid.Text('CHN', align='center')])
-        loading_el = urwid.AttrMap(loading_el, 'reversed')
+        loading_el = urwid.ListBox([urwid.Text(('reversed', 'CHN'), align='center')])
         if self.state['loading']:
-            loading_el = urwid.ListBox([urwid.Text('Loading %s...' % self.state['loading_content'], align='center')])
-            loading_el = urwid.AttrMap(loading_el, 'loading')
+            s = 'Loading %s...' % self.state['loading_content']
+            loading_el = urwid.ListBox([urwid.Text(('loading', s), align='center')])
 
         self.login_el = React.create_element(LoginForm, 'login', 
                 is_login=is_login, on_login=self.on_login, 
@@ -422,25 +528,39 @@ class App(Component):
         page_btns_el = React.create_element(PageBtns, 'page_btns', 
                 is_login=is_login, pages=self.hn_data.pages,
                 on_select_page=self.on_select_page)
-        header_el = React.create_element(Header, 'header', posts=posts_searched, 
+        side_bar_el = React.create_element(SideBar, 'side_bar', posts=posts_searched, 
                 on_select_cat=self.on_select_cat, on_select_sort=self.on_select_sort)
         posts_el = React.create_element(Posts, 'posts',
-                posts=posts_filtered, page_type=current_page_type)
-        # body_el = urwid.ListBox([urwid.Columns([header_el, posts_el])])
-        body_el = urwid.Columns([('weight', 2, header_el), ('weight', 10, posts_el)])
+                posts=posts_filtered, page_type=current_page_type,
+                posts_upvoted=self.get_posts('upvoted'), posts_favorite=self.get_posts('favorite'))
+        body_el = urwid.Columns([('weight', 2, side_bar_el), ('weight', 10, posts_el)])
 
         return [
             (loading_el, ('weight', .2)), 
             (self.login_el, ('weight', .5)), 
             (page_btns_el, ('weight', .5)), 
-            # (header_el, ('weight', .5)),
+            # (side_bar_el, ('weight', .5)),
             # (posts_el, ('weight', 10))
             (body_el, ('weight', 10))
         ]
 
 
+palette = [
+        ('reversed', 'standout', ''),
+        ('loading', 'yellow', 'dark green'),
+        ('cat', 'dark green', ''),
+        ('subtext', 'dark gray', ''),
+        ('highlight', 'dark red', ''),
+
+        ('headings', 'white,underline', 'black', 'bold,underline'),
+        ('body_text', 'dark cyan', 'light gray'),
+        ('buttons', 'yellow', 'dark green', 'standout'),
+        ('section_text', 'body_text'),
+]
+
 if __name__ == '__main__':
     from train import *
     root_el = HnPile([])
-    ReactConsole.render(React.create_element(App, 'app', root_el=root_el, return_instance=True), root_el)
+    ReactConsole.render(React.create_element(App, 'app', root_el=root_el, return_instance=True), 
+            root_el, palette=palette)
 
