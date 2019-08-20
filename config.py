@@ -7,15 +7,22 @@ hn_datetime_format = '%H:%M %b %d, %Y'
 hn_date_format = '%b %d, %Y'
 
 hn_pages = dict(
+        recommend={
+            'url': '/newest',
+            'saved': 'data/hn_recommend.json',
+            #'max_page': 10,
+            'max_page': 3,
+            'login': True,
+            },
         hot={
             'url': '/',
             'saved': 'data/hn_hot.json',
             'max_page': 3,
             'login': False,
             }, 
-        lastest={
+        latest={
             'url': '/newest',
-            'saved': 'data/hn_lastest.json',
+            'saved': 'data/hn_latest.json',
             #'max_page': 10,
             'max_page': 3,
             'login': False,

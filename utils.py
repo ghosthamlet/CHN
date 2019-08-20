@@ -58,3 +58,7 @@ def string_to_datetime(s):
 
 def get_post_identity(post):
     return post['url']
+
+
+def format_url(url):
+    return url if url[:4] == 'http' else '%s/%s' % (config.hn_domain, url)

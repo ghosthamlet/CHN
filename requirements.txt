@@ -16,6 +16,7 @@ requests
 qgrid
 jupyter-datatables
 spacy
+# python3 -m spacy download en_core_web_md
 matplotlib
 # seaborn>=0.8.1
 # torch<0.4

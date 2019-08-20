@@ -52,7 +52,8 @@ class HnPile(urwid.Pile):
     # upvote favorite just can do in posts not by incremental download
     # as the the actions maybe used time based token
     signals = ['focus_search', 'trigger_help', 'trigger_focus_top',
-                'trigger_upvote', 'trigger_favorite', 'refresh']
+                'trigger_upvote', 'trigger_favorite', 'refresh',
+                'open_comment']
 
     def keypress(self, size, key):
         super().keypress(size, key)
@@ -69,6 +70,8 @@ class HnPile(urwid.Pile):
             self._emit('trigger_upvote')
         elif key == 'o':
             self._emit('trigger_favorite')
+        elif key == 'c':
+            self._emit('open_comment')
 
 
 class LoginForm(Component):
@@ -90,7 +93,7 @@ class LoginForm(Component):
         urwid.connect_signal(submit_el, 'click', lambda button: self.on_click_login())
 
         focus_el = urwid.SimpleFocusListWalker([self.username_el, self.password_el, 
-            submit_el, *self.render_search_form()])
+            submit_el, *self.render_search_form(), self.render_help_tip()])
         # have to wrap Columns/GridFlow in ListBox, or Pile can't work
         return urwid.ListBox([urwid.Columns(focus_el), urwid.Divider('-')])
 
@@ -105,9 +108,12 @@ class LoginForm(Component):
 
     def render_search_form(self):
         self.search_el = HnEdit('Keyword: ', edit_text=self.props['search_keyword'])
-
         urwid.connect_signal(self.search_el, 'click', lambda button: self.on_click_search())
-        return self.search_el,
+
+        return (self.search_el, )
+
+    def render_help_tip(self):
+        return urwid.Text('(Press h to show helps.)')
 
     def on_click_search(self):
         keyword = self.search_el.edit_text.strip().lower()
@@ -116,7 +122,8 @@ class LoginForm(Component):
     def render(self):
         if self.props['is_login']:
             login_el = urwid.ListBox([
-                urwid.Columns([urwid.Text(self.props['username'] or 'Logged'), *self.render_search_form()]), 
+                urwid.Columns([urwid.Text(self.props['username'] or 'Logged'), 
+                    *self.render_search_form(), self.render_help_tip()]), 
                 urwid.Divider('-')])
         else:
             login_el = self.render_login_form()
@@ -145,7 +152,9 @@ class PageBtns(Component):
         for page_type, meta in self.props['pages'].items():
             if not self.props['is_login'] and meta['login']:
                 continue
+            choices.append(page_type)
 
+        for page_type in choices:
             button = HnButton(page_type)
             urwid.connect_signal(button, 'click', lambda el, choice: self.on_select_page(choice), page_type)
             body.append(urwid.AttrMap(button, None, focus_map='reversed'))
@@ -272,8 +281,7 @@ class Posts(Component):
         return urwid.ListBox(urwid.SimpleFocusListWalker(body))
 
     def on_click_title(self, button, url):
-        url = url if url[:4] == 'http' else '%s/%s' % (config.hn_domain, url)
-        webbrowser.open_new_tab(url)
+        webbrowser.open_new_tab(utils.format_url(url))
 
     def render(self):
         return urwid.Padding(self.create_list(self.props['page_type'], self.props['posts']), left=1, right=1)
@@ -289,6 +297,8 @@ class Help(Component):
         v: upvote current post(NOTE: you have to view/load upvoted page first)
         o: favorite current post(NOTE: you have to view/load favorite page first)
         r: refresh posts
+        c: open comment page
+        enter: open link page
 
         NOTICE:
         0. login is safe, just cookies will save on your computer, 
@@ -335,6 +345,7 @@ class App(Component):
         urwid.connect_signal(self.root_el, 'trigger_upvote', lambda el: self.trigger_upvote())
         urwid.connect_signal(self.root_el, 'trigger_favorite', lambda el: self.trigger_favorite())
         urwid.connect_signal(self.root_el, 'refresh', lambda el: self.refresh())
+        urwid.connect_signal(self.root_el, 'open_comment', lambda el: self.open_comment())
 
     def init(self, refresh=True):
         current_page_type = self.state['current_page_type']
@@ -382,6 +393,12 @@ class App(Component):
         self.set_state({'loading': True, 'loading_content': page_type})
 
         def bgf():
+            if page_type == 'recommend':
+                self.download_posts('upvoted')
+                self.load_posts('upvoted')
+                self.download_posts('favorite')
+                self.load_posts('favorite')
+
             self.download_posts(page_type)
             self.load_posts(page_type)
             # XXX: load_posts already change loading, don't set loading again, or ui will forzen
@@ -395,7 +412,7 @@ class App(Component):
 
     def download_posts(self, page_type):
         page_meta = self.hn_data.pages[page_type]
-        url = page_meta['url'] % self.state['username'] if page_meta['login'] else page_meta['url']
+        url = page_meta['url'] % self.state['username'] if 'id=%s' in page_meta['url'] else page_meta['url']
         logger.info('select page: %s' % url)
         self.client.download_posts(url, page_type, 
                 incremental=self.client.can_incremental(page_type), refresh=not page_meta['login'])
@@ -434,6 +451,9 @@ class App(Component):
         self.on_select_page(self.state['current_page_type'])
 
     def trigger_upvote(self):
+        if not self.state['is_login']:
+            return
+
         page_meta = self.hn_data.pages[self.state['current_page_type']]
         if self.state['loading'] \
                 or self.state['show_help'] \
@@ -465,6 +485,9 @@ class App(Component):
         threading.Thread(target=bgf).start()
 
     def trigger_favorite(self):
+        if not self.state['is_login']:
+            return
+
         page_meta = self.hn_data.pages[self.state['current_page_type']]
         if self.state['loading'] \
                 or self.state['show_help'] \
@@ -495,10 +518,20 @@ class App(Component):
 
         threading.Thread(target=bgf).start()
 
+    def open_comment(self):
+        if self.state['show_help'] \
+                or not self.is_focus_posts():
+            return
+
+        post = self.get_focus_post()
+        webbrowser.open_new_tab(utils.format_url(post['comment_url']))
+
     def get_focus_post(self):
         # post_idx = self.root_el.contents[self.posts_focus_postion()][0].contents[1][0].original_widget.focus_position - 1
-        identity = self.root_el.contents[self.posts_focus_postion()][0].contents[1][0].original_widget.get_focus_widgets()[2].identity
-        post = [v for v in self.get_posts(self.state['current_page_type']) if utils.get_post_identity(v) == identity][0]
+        col_el = self.root_el.contents[self.posts_focus_postion()][0]
+        identity = col_el.contents[1][0].original_widget.get_focus_widgets()[2].identity
+        post = [v for v in self.get_posts(self.state['current_page_type']) 
+                if utils.get_post_identity(v) == identity][0]
         return post
 
     def is_focus_login(self):
@@ -510,7 +543,8 @@ class App(Component):
     def is_focus_posts(self):
         pos = self.posts_focus_postion()
         l = len(self.root_el.contents)
-        return self.root_el.focus_position == pos and l > 1 and self.root_el.contents[pos][0].focus_position == 1
+        return self.root_el.focus_position == pos and l > 1 \
+               and self.root_el.contents[pos][0].focus_position == 1
 
     def focus_posts(self):
         self.root_el.focus_position = self.posts_focus_postion()
@@ -543,7 +577,7 @@ class App(Component):
                     score=lambda x: x['score'],
                     comment=lambda x: x['comment_cnt'],
                     created=lambda x: utils.string_to_datetime(x['age']),
-                    )
+            )
             posts = sorted(posts, key=lambda x: sort_map[current_sort](x),
                     reverse=self.state['current_sort_dir'] == 'desc')
 
@@ -557,6 +591,9 @@ class App(Component):
                               or fn(p['site'].lower())]
         else:
             posts_searched = posts
+        if current_page_type == 'recommend':
+            posts_searched = self.analyze.filter_recommend(posts_searched, 
+                    self.get_posts('upvoted') + self.get_posts('favorite'))
         posts_filtered = [p for p in posts_searched
                           if p['cat'] == current_cat or current_cat == 'all']
 

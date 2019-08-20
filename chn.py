@@ -11,11 +11,13 @@ import requests
 import pickle
 
 import numpy as np
+import spacy
 from train import *
 import utils
 
 
 logger = utils.get_logger()
+nlp = spacy.load('en_core_web_md')
 
 
 class HnData:
@@ -245,8 +247,26 @@ class HnAnalyze:
         TODO: get posts in hot/lastest created older then latest favorite but not in favorite, 
               tag as non_favorite, train with favorite"""
 
-    def most_common_cats(self, posts):
-        pass
+    def filter_recommend(self, new_posts, posts_recommended):
+        identities = [utils.get_post_identity(v) for v in posts_recommended]
+        posts = [v for v in new_posts if utils.get_post_identity(v) not in identities]
+        posts_vector = np.array([nlp(v['title']).vector for v in posts])
+        posts_recommended_vector = np.array([nlp(v['title']).vector for v in posts_recommended[:1000]])
+        scores = posts_vector.dot(posts_recommended_vector.T).sum(axis=1)
+
+       #for post in posts:
+       #    score = 0
+       #    doc = nlp(post['title'])
+       #    if doc.vector_norm != 0:
+       #        for d in posts_recommended_doc:
+       #            if d.vector_norm != 0:
+       #                score += doc.similarity(d)
+       #    scores.append(score)
+
+        idxs = list(np.argsort(scores)[-20:])
+        idxs.reverse()
+
+        return [posts[i] for i in idxs]
 
 
 class HnSearch:
