@@ -10,7 +10,7 @@ import locale
 
 import urwid
 
-from chn import HnData, HnClient, HnAnalyze, HnSearch, HnSort
+from hn import HnData, HnClient, HnAnalyze, HnSearch, HnSort
 
 from react import React, ReactConsole, Component 
 import utils
@@ -386,7 +386,7 @@ class App(Component):
         self.flush_msg_stay = 3
         self.flush_msg_timer = None
 
-        self.hn_data = HnData()
+        self.data = HnData()
         self.client  = HnClient()
         self.analyze = HnAnalyze()
         self.search = HnSearch()
@@ -415,7 +415,7 @@ class App(Component):
 
     def init(self, refresh=True):
         current_page_type = self.state['current_page_type']
-        self.client.download_posts(self.hn_data.pages[current_page_type]['url'], 
+        self.client.download_posts(self.data.pages[current_page_type]['url'], 
                 current_page_type, refresh=refresh)
         
         self.load_posts('upvoted')
@@ -423,8 +423,8 @@ class App(Component):
         self.load_posts(current_page_type)
 
     def load_posts(self, page_type):
-        self.hn_data.load_posts(page_type)
-        posts = self.hn_data.all_posts[page_type]
+        self.data.load_posts(page_type)
+        posts = self.data.all_posts[page_type]
         if not posts:
             return
 
@@ -480,7 +480,7 @@ class App(Component):
         # self.loading_thread.join()
 
     def download_posts(self, page_type):
-        page_meta = self.hn_data.pages[page_type]
+        page_meta = self.data.pages[page_type]
         url = page_meta['url'] % self.state['username'] if 'id=%s' in page_meta['url'] else page_meta['url']
         logger.info('select page: %s' % url)
         self.client.download_posts(url, page_type, 
@@ -537,7 +537,7 @@ class App(Component):
         def bgf():
             self.client.upvote(post, upvoted)
             if upvoted:
-                self.hn_data.remove_post('upvoted', post)
+                self.data.remove_post('upvoted', post)
             self.download_posts('upvoted')
             self.load_posts('upvoted')
             # XXX: load_posts already change loading, don't set loading again, or ui will forzen
@@ -565,7 +565,7 @@ class App(Component):
             self.client.favorite(post, favorited)
             self.download_posts('favorite')
             if favorited:
-                self.hn_data.remove_post('favorite', post)
+                self.data.remove_post('favorite', post)
             self.load_posts('favorite')
             # XXX: load_posts already change loading, don't set loading again, or ui will forzen
             # self.set_state({'loading': False})
@@ -582,7 +582,7 @@ class App(Component):
                 or self.state['show_help']:
             return
 
-        page_meta = self.hn_data.pages[self.state['current_page_type']]
+        page_meta = self.data.pages[self.state['current_page_type']]
         if page_meta['login']: 
             self.set_flush_msg('Can\'t upvote/favorite in authed pages now.')
             return False
@@ -669,7 +669,7 @@ class App(Component):
                 set_username=self.set_username, set_password=self.set_password,
                 search_keyword=search_keyword, on_search=self.on_search)
         page_btns_el = React.create_element(PageBtns, 'page_btns', 
-                is_login=is_login, pages=self.hn_data.pages,
+                is_login=is_login, pages=self.data.pages,
                 on_select_page=self.on_select_page)
         side_bar_el = React.create_element(SideBar, 'side_bar', posts=posts_searched, 
                 on_select_cat=self.on_select_cat, on_select_sort=self.on_select_sort,
