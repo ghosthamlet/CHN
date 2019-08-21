@@ -38,12 +38,13 @@ class HnEdit(urwid.Edit):
     signals = ['change', 'postchange', 'enter']
 
     def keypress(self, size, key):
-        super().keypress(size, key)
-
         if key == 'enter' and not self.multiline:
             self._emit('enter')
         elif key == 'tab' and not self.allow_tab:
             # goto next selectable
+            return key
+        else:
+            key = super().keypress(size, key)
             return key
         return key
 
@@ -101,10 +102,12 @@ class Help(Component):
 
         NOTICE:
         0. login is safe, just cookies will save on your computer, 
-           accounts will not save, not send to any servers. 
-        1. use arrows to navigate
-        2. sometimes after loading new page, ui maybe frozen, hit t to activate it
-        3. load submitted/upvoted/favorite pages maybe very slow first time if you have many data, 
+           accounts will not save, not send to any servers
+        1. Login may FAILED! when you try many times wrong username/password, your ip maybe locked by HN, 
+           and it will use google reCAPTCHA to verify your login, you have to wait HN to remove reCAPTCHA to login CHN again
+        2. use arrows to navigate
+        3. sometimes after loading new page, ui maybe frozen, hit t to activate it
+        4. load submitted/upvoted/favorite pages maybe very slow first time if you have many data, 
            but after first load it will be fast
     '''
     def render(self):
@@ -139,7 +142,8 @@ class LoginForm(Component):
     def render_login_form(self):
         self.username_el = urwid.Edit('Username: ', edit_text=self.props['username'])
         self.password_el = HnEdit('Password: ', edit_text=self.props['password'])
-        submit_el = urwid.AttrMap(HnButton('Login'), 'btn', focus_map='reversed')
+        submit_el = HnButton('Login')
+        submit_wrap_el = urwid.AttrMap(submit_el, 'btn', focus_map='btn_focus')
 
         urwid.connect_signal(self.username_el, 'change', 
                 lambda el, s: self.props['set_username'](s.strip()))
@@ -151,7 +155,7 @@ class LoginForm(Component):
                 lambda button: self.on_click_login())
 
         focus_el = urwid.SimpleFocusListWalker([self.username_el, self.password_el, 
-            submit_el, *self.render_search_form(), self.render_help_tip()])
+            submit_wrap_el, *self.render_search_form(), self.render_help_tip()])
         # have to wrap Columns/GridFlow in ListBox, or Pile can't work
         return urwid.ListBox([urwid.Columns(focus_el), urwid.Divider('-')])
 
@@ -218,7 +222,8 @@ class PageBtns(Component):
 
         for page_type in choices:
             button = HnButton(page_type)
-            urwid.connect_signal(button, 'click', lambda el, choice: self.on_select_page(choice), page_type)
+            urwid.connect_signal(button, 'click', 
+                    lambda el, choice: self.on_select_page(choice), page_type)
             body.append(urwid.AttrMap(button, None, focus_map='reversed'))
 
         focus_el = urwid.SimpleFocusListWalker(body)
@@ -691,7 +696,8 @@ palette = [
         ('loading', 'yellow', 'dark green'),
         ('cat', 'dark green', ''),
         ('subtext', 'dark gray', ''),
-        ('btn', 'bold', 'black'),
+        ('btn', 'bold', ''),
+        ('btn_focus', '', 'black'),
         ('highlight', 'dark red', ''),
         ('section_header', 'bold', 'black'),
 
