@@ -1,4 +1,5 @@
-hn*
+*.cookie
+hn_*.json
 *.log
 .ipynb_checkpoints/
 *.swp
