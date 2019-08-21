@@ -231,6 +231,16 @@ class HnAnalyze:
             # cat = self.classify([v['title']])[0]
             v['cat'] = cats[i]
 
+    def calc_cat_freq(self, posts):
+        cat_freq = {}
+        for p in posts:
+            if p['cat'] not in cat_freq:
+                cat_freq[p['cat']] = 1
+            else:
+                cat_freq[p['cat']] += 1
+        cat_freq = sorted(cat_freq.items(), key=lambda x: x[1], reverse=True)
+        return cat_freq
+
     def classify(self, titles):
         return self.model.predict(titles)
       # probs = self.model.decision_function(titles)
@@ -270,6 +280,30 @@ class HnAnalyze:
 
 
 class HnSearch:
+    def by_cat(self, posts, cat):
+        return [p for p in posts
+                if p['cat'] == cat or cat == 'all']
+
+    def by_keyword(self, posts, s):
+        ks = s.split(' ')
+        fn = lambda t: any(map(lambda k: k and k in t, ks))
+        posts_searched = [p for p in posts
+                          if fn(p['title'].lower())
+                          or fn(p['cat'].lower())
+                          or fn(p['auther'].lower())
+                          or fn(p['site'].lower())]
+        return posts_searched
+
+
+class HnSort:
     def __init__(self):
-        pass
+        self.sort_map = dict(
+                score=lambda x: x['score'],
+                comment=lambda x: x['comment_cnt'],
+                created=lambda x: utils.string_to_datetime(x['age']),
+        ) 
+
+    def by_field(self, posts, field, dir):
+        return sorted(posts, key=lambda x: self.sort_map[field](x),
+                reverse=dir == 'desc')
 

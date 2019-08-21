@@ -10,7 +10,7 @@ import locale
 
 import urwid
 
-from chn import HnData, HnClient, HnAnalyze
+from chn import HnData, HnClient, HnAnalyze, HnSearch, HnSort
 
 from react import React, ReactConsole, Component 
 import utils
@@ -51,9 +51,10 @@ class HnEdit(urwid.Edit):
 class HnPile(urwid.Pile):
     # upvote favorite just can do in posts not by incremental download
     # as the the actions maybe used time based token
+    # TODO: move trigger_upvote/trigger_favorite/open_comment to Posts Component
     signals = ['focus_search', 'trigger_help', 'trigger_focus_top',
-                'trigger_upvote', 'trigger_favorite', 'refresh',
-                'open_comment']
+               'trigger_upvote', 'trigger_favorite', 'refresh',
+               'open_comment']
 
     def keypress(self, size, key):
         super().keypress(size, key)
@@ -72,6 +73,31 @@ class HnPile(urwid.Pile):
             self._emit('trigger_favorite')
         elif key == 'c':
             self._emit('open_comment')
+
+
+class Help(Component):
+    TEXT = '''
+    HELP:
+        SHORTCUTS:
+        h: show/close this screen
+        s: goto search keyword, use space to seperate multi keywords
+        t: goto select page type, or go back to posts
+        v: upvote current post(NOTE: you have to view/load upvoted page first)
+        o: favorite current post(NOTE: you have to view/load favorite page first)
+        r: refresh posts
+        c: open comment page
+        enter: open link page
+
+        NOTICE:
+        0. login is safe, just cookies will save on your computer, 
+           accounts will not save, not send to any servers. 
+        1. use arrows to navigate
+        2. sometimes after loading new page, ui maybe frozen, hit t to activate it
+        3. load submitted/upvoted/favorite pages maybe very slow first time if you have many data, 
+           but after first load it will be fast
+    '''
+    def render(self):
+        return urwid.ListBox([urwid.Text(Help.TEXT)])
 
 
 class LoginForm(Component):
@@ -136,7 +162,7 @@ class PageBtns(Component):
         super().__init__(**props)
         
         self.container_el = None
-        self.focus_position = 0
+        self.focus_position = 1
 
     def on_select_page(self, page_type):
         self.save_focus_position()
@@ -172,7 +198,7 @@ class SideBar(Component):
         super().__init__(**props)
         
         self.container_el = None
-        self.focus_position = 0
+        self.focus_position = 1
 
     def render_menu(self, choices):
         body = []
@@ -218,17 +244,11 @@ class SideBar(Component):
         self.focus_position = self.container_el.focus_position
 
     def render(self):
-        posts = {}
-        for p in self.props['posts']:
-            if p['cat'] not in posts:
-                posts[p['cat']] = 1
-            else:
-                posts[p['cat']] += 1
-        posts = sorted(posts.items(), key=lambda x: x[1], reverse=True)
+        cat_freq = self.props['analyze'].calc_cat_freq(self.props['posts'])
 
         choices = []
         # for cat in self.analyze.model.classes_[:6]:
-        for cat, cnt in posts:
+        for cat, cnt in cat_freq:
             if cnt > 0:
                 choices.append('%s(%s)' % (cat, cnt))
         self.container_el = self.render_menu(choices)
@@ -287,31 +307,6 @@ class Posts(Component):
         return urwid.Padding(self.create_list(self.props['page_type'], self.props['posts']), left=1, right=1)
 
 
-class Help(Component):
-    TEXT = '''
-    HELP:
-        SHORTCUTS:
-        h: show/close this screen
-        s: goto search keyword, use space to seperate multi keywords
-        t: goto select page type, or go back to posts
-        v: upvote current post(NOTE: you have to view/load upvoted page first)
-        o: favorite current post(NOTE: you have to view/load favorite page first)
-        r: refresh posts
-        c: open comment page
-        enter: open link page
-
-        NOTICE:
-        0. login is safe, just cookies will save on your computer, 
-           accounts will not save, not send to any servers. 
-        1. use arrows to navigate
-        2. sometimes after loading new page, ui maybe frozen, hit t to activate it
-        3. load submitted/upvoted/favorite pages maybe very slow first time if you have many data, 
-           but after first load it will be fast
-    '''
-    def render(self):
-        return urwid.ListBox([urwid.Text(Help.TEXT)])
-
-
 # TODO: add translation option for titles
 class App(Component):
     def __init__(self, **props):
@@ -323,6 +318,8 @@ class App(Component):
         self.hn_data = HnData()
         self.client  = HnClient()
         self.analyze = HnAnalyze()
+        self.search = HnSearch()
+        self.sort = HnSort()
 
         self.state = dict(
                 current_page_type='hot',
@@ -573,29 +570,16 @@ class App(Component):
         posts = self.get_posts(current_page_type)
 
         if current_sort != 'default':
-            sort_map = dict(
-                    score=lambda x: x['score'],
-                    comment=lambda x: x['comment_cnt'],
-                    created=lambda x: utils.string_to_datetime(x['age']),
-            )
-            posts = sorted(posts, key=lambda x: sort_map[current_sort](x),
-                    reverse=self.state['current_sort_dir'] == 'desc')
+            posts = self.sort.by_field(posts, current_sort, self.state['current_sort_dir'])
 
         if search_keyword:
-            ks = search_keyword.split(' ')
-            fn = lambda t: any(map(lambda k: k and k in t, ks))
-            posts_searched = [p for p in posts
-                              if fn(p['title'].lower())
-                              or fn(p['cat'].lower())
-                              or fn(p['auther'].lower())
-                              or fn(p['site'].lower())]
+           posts_searched = self.search.by_keyword(posts, search_keyword) 
         else:
             posts_searched = posts
         if current_page_type == 'recommend':
             posts_searched = self.analyze.filter_recommend(posts_searched, 
                     self.get_posts('upvoted') + self.get_posts('favorite'))
-        posts_filtered = [p for p in posts_searched
-                          if p['cat'] == current_cat or current_cat == 'all']
+        posts_filtered = self.search.by_cat(posts_searched, current_cat)
 
         loading_el = urwid.ListBox([urwid.Text(config.app_name, align='center')])
         loading_el = urwid.AttrMap(loading_el, 'page_title')
@@ -608,12 +592,13 @@ class App(Component):
                 is_login=is_login, on_login=self.on_login, 
                 username=self.state['username'], password=self.state['password'],
                 set_username=self.set_username, set_password=self.set_password,
-                search_keyword=self.state['search_keyword'], on_search=self.on_search)
+                search_keyword=search_keyword, on_search=self.on_search)
         page_btns_el = React.create_element(PageBtns, 'page_btns', 
                 is_login=is_login, pages=self.hn_data.pages,
                 on_select_page=self.on_select_page)
         side_bar_el = React.create_element(SideBar, 'side_bar', posts=posts_searched, 
-                on_select_cat=self.on_select_cat, on_select_sort=self.on_select_sort)
+                on_select_cat=self.on_select_cat, on_select_sort=self.on_select_sort,
+                analyze=self.analyze)
         posts_el = React.create_element(Posts, 'posts',
                 posts=posts_filtered, page_type=current_page_type,
                 posts_upvoted=self.get_posts('upvoted'), posts_favorite=self.get_posts('favorite'))
