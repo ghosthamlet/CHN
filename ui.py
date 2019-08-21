@@ -35,15 +35,31 @@ class HnListItem(urwid.Button):
 
 
 class HnEdit(urwid.Edit):
-    signals = ['change', 'postchange', 'click']
+    signals = ['change', 'postchange', 'enter']
 
     def keypress(self, size, key):
         super().keypress(size, key)
 
         if key == 'enter' and not self.multiline:
-            self._emit('click')
+            self._emit('enter')
         elif key == 'tab' and not self.allow_tab:
             # goto next selectable
+            return key
+        return key
+
+
+class HnListBox(urwid.ListBox):
+    signals = ['open_comment', 'trigger_upvote', 'trigger_favorite']
+
+    def keypress(self, size, key):
+        if key == 'c':
+            self._emit('open_comment')
+        elif key == 'v':
+            self._emit('trigger_upvote')
+        elif key == 'o':
+            self._emit('trigger_favorite')
+        else:
+            key = super().keypress(size, key)
             return key
         return key
 
@@ -51,10 +67,7 @@ class HnEdit(urwid.Edit):
 class HnPile(urwid.Pile):
     # upvote favorite just can do in posts not by incremental download
     # as the the actions maybe used time based token
-    # TODO: move trigger_upvote/trigger_favorite/open_comment to Posts Component
-    signals = ['focus_search', 'trigger_help', 'trigger_focus_top',
-               'trigger_upvote', 'trigger_favorite', 'refresh',
-               'open_comment']
+    signals = ['focus_search', 'trigger_help', 'trigger_focus_top', 'refresh']
 
     def keypress(self, size, key):
         super().keypress(size, key)
@@ -67,12 +80,10 @@ class HnPile(urwid.Pile):
             self._emit('trigger_focus_top')
         elif key == 'r':
             self._emit('refresh')
-        elif key == 'v':
-            self._emit('trigger_upvote')
-        elif key == 'o':
-            self._emit('trigger_favorite')
-        elif key == 'c':
-            self._emit('open_comment')
+        # else:
+        #    key = super().keypress(size, key)
+        #    return key
+        # return key
 
 
 class Help(Component):
@@ -100,6 +111,24 @@ class Help(Component):
         return urwid.ListBox([urwid.Text(Help.TEXT)])
 
 
+class PageTitle(Component):
+    def render(self):
+        flush_msg = self.props['flush_msg']
+        if not self.props['loading']:
+            if flush_msg:
+                c = 'flush_msg'
+                el = urwid.Text(flush_msg, align='center')
+            else:
+                c = 'page_title'
+                el = urwid.Text(config.app_name, align='center')
+            page_title_el = urwid.AttrMap(urwid.ListBox([el]), c)
+        else:
+            s = 'Loading %s...' % self.props['loading_content']
+            page_title_el = urwid.ListBox([urwid.Text(s, align='center')])
+            page_title_el = urwid.AttrMap(page_title_el, 'loading')
+        return page_title_el
+
+
 class LoginForm(Component):
     def __init__(self, **props):
         super().__init__(**props)
@@ -109,14 +138,17 @@ class LoginForm(Component):
 
     def render_login_form(self):
         self.username_el = urwid.Edit('Username: ', edit_text=self.props['username'])
-        self.password_el = urwid.Edit('Password: ', edit_text=self.props['password'])
-        submit_el = urwid.Button('Submit')
+        self.password_el = HnEdit('Password: ', edit_text=self.props['password'])
+        submit_el = urwid.AttrMap(HnButton('Login'), 'btn', focus_map='reversed')
 
         urwid.connect_signal(self.username_el, 'change', 
                 lambda el, s: self.props['set_username'](s.strip()))
         urwid.connect_signal(self.password_el, 'change', 
                 lambda el, s: self.props['set_password'](s.strip()))
-        urwid.connect_signal(submit_el, 'click', lambda button: self.on_click_login())
+        urwid.connect_signal(self.password_el, 'enter', 
+                lambda button: self.on_click_login())
+        urwid.connect_signal(submit_el, 'click', 
+                lambda button: self.on_click_login())
 
         focus_el = urwid.SimpleFocusListWalker([self.username_el, self.password_el, 
             submit_el, *self.render_search_form(), self.render_help_tip()])
@@ -134,12 +166,13 @@ class LoginForm(Component):
 
     def render_search_form(self):
         self.search_el = HnEdit('Keyword: ', edit_text=self.props['search_keyword'])
-        urwid.connect_signal(self.search_el, 'click', lambda button: self.on_click_search())
+        urwid.connect_signal(self.search_el, 'enter', 
+                lambda button: self.on_click_search())
 
         return (self.search_el, )
 
     def render_help_tip(self):
-        return urwid.Text('(Press h to show helps.)')
+        return urwid.Text('(Press h to show helps)')
 
     def on_click_search(self):
         keyword = self.search_el.edit_text.strip().lower()
@@ -169,7 +202,10 @@ class PageBtns(Component):
         self.props['on_select_page'](page_type)
 
     def save_focus_position(self):
-        self.focus_position = self.container_el.contents()[0][0].focus_position
+        self.focus_position = self.get_focus_container().focus_position
+
+    def get_focus_container(self):
+        return self.container_el.contents()[0][0]
 
     def render(self):
         body = []
@@ -188,7 +224,9 @@ class PageBtns(Component):
         focus_el = urwid.SimpleFocusListWalker(body)
         # have to wrap Columns/GridFlow in ListBox, or Pile can't work
         self.container_el = urwid.ListBox([urwid.Columns(focus_el), urwid.Divider('-')])
-        self.container_el.contents()[0][0].focus_position = self.focus_position
+        el = self.get_focus_container()
+        if len(el.contents) > self.focus_position:
+            el.focus_position = self.focus_position
 
         return self.container_el
 
@@ -252,7 +290,8 @@ class SideBar(Component):
             if cnt > 0:
                 choices.append('%s(%s)' % (cat, cnt))
         self.container_el = self.render_menu(choices)
-        self.container_el.focus_position = self.focus_position
+        if len(self.container_el.body) > self.focus_position:
+            self.container_el.focus_position = self.focus_position
 
         return self.container_el
 
@@ -298,10 +337,34 @@ class Posts(Component):
                 urwid.AttrMap(subtext_el, 'subtext')
             ])
             body.append(urwid.AttrMap(pile_el, None, focus_map='reversed'))
-        return urwid.ListBox(urwid.SimpleFocusListWalker(body))
 
-    def on_click_title(self, button, url):
+        self.list_el = HnListBox(urwid.SimpleFocusListWalker(body))
+        urwid.connect_signal(self.list_el, 'open_comment', self.open_comment)
+        urwid.connect_signal(self.list_el, 'trigger_upvote', self.trigger_upvote)
+        urwid.connect_signal(self.list_el, 'trigger_favorite', self.trigger_favorite)
+
+        return self.list_el
+
+    def on_click_title(self, el, url):
         webbrowser.open_new_tab(utils.format_url(url))
+
+    def open_comment(self, el):
+        post = self.get_focus_post()
+        webbrowser.open_new_tab(utils.format_url(post['comment_url']))
+
+    def trigger_upvote(self, el):
+        post = self.get_focus_post()
+        self.props['trigger_upvote'](post)
+
+    def trigger_favorite(self, el):
+        post = self.get_focus_post()
+        self.props['trigger_favorite'](post)
+
+    def get_focus_post(self):
+        identity = self.list_el.get_focus_widgets()[-1].identity
+        post = [v for v in self.props['posts']
+                if utils.get_post_identity(v) == identity][0]
+        return post
 
     def render(self):
         return urwid.Padding(self.create_list(self.props['page_type'], self.props['posts']), left=1, right=1)
@@ -314,6 +377,9 @@ class App(Component):
 
         self.root_el = self.props['root_el']
         self.login_el = None
+
+        self.flush_msg_stay = 3
+        self.flush_msg_timer = None
 
         self.hn_data = HnData()
         self.client  = HnClient()
@@ -332,6 +398,7 @@ class App(Component):
                 is_login=not not self.client.cookies,
                 all_posts={},
                 show_help=False,
+                flush_msg='',
                 loading=True,
                 loading_content='',
         )
@@ -339,10 +406,7 @@ class App(Component):
         urwid.connect_signal(self.root_el, 'focus_search', lambda el: self.focus_search())
         urwid.connect_signal(self.root_el, 'trigger_help', lambda el: self.trigger_help())
         urwid.connect_signal(self.root_el, 'trigger_focus_top', lambda el: self.trigger_focus_top())
-        urwid.connect_signal(self.root_el, 'trigger_upvote', lambda el: self.trigger_upvote())
-        urwid.connect_signal(self.root_el, 'trigger_favorite', lambda el: self.trigger_favorite())
         urwid.connect_signal(self.root_el, 'refresh', lambda el: self.refresh())
-        urwid.connect_signal(self.root_el, 'open_comment', lambda el: self.open_comment())
 
     def init(self, refresh=True):
         current_page_type = self.state['current_page_type']
@@ -369,8 +433,11 @@ class App(Component):
         return self.state['all_posts'].get(page_type, [])
 
     def on_login(self):
-        self.client.login(self.state['username'], self.state['password'])
-        self.set_state({'is_login': True})
+        succ = self.client.login(self.state['username'], self.state['password'])
+        if succ:
+            self.set_state({'is_login': True})
+        else:
+            self.set_flush_msg('Wrong Username or Password!')
 
     def on_search(self, keyword):
         self.set_state({'search_keyword': keyword})
@@ -447,23 +514,16 @@ class App(Component):
             return
         self.on_select_page(self.state['current_page_type'])
 
-    def trigger_upvote(self):
-        if not self.state['is_login']:
-            return
-
-        page_meta = self.hn_data.pages[self.state['current_page_type']]
-        if self.state['loading'] \
-                or self.state['show_help'] \
-                or page_meta['login'] \
-                or not self.is_focus_posts():
+    def trigger_upvote(self, post):
+        if not self.can_do_auth_action():
             return
 
         # must get focus data before all set_state, as after rerender, focus lost
-        post = self.get_focus_post()
-
+        # post = self.get_focus_post()
         self.load_posts('upvoted')
         posts_upvoted = self.get_posts('upvoted')
         if not posts_upvoted:
+            self.set_flush_msg('Can\'t upvote, Please view/load upvoted page first.')
             return
 
         self.set_state({'loading': True, 'loading_content': 'updating upvote...'})
@@ -481,23 +541,16 @@ class App(Component):
 
         threading.Thread(target=bgf).start()
 
-    def trigger_favorite(self):
-        if not self.state['is_login']:
+    def trigger_favorite(self, post):
+        if not self.can_do_auth_action():
             return
-
-        page_meta = self.hn_data.pages[self.state['current_page_type']]
-        if self.state['loading'] \
-                or self.state['show_help'] \
-                or page_meta['login'] \
-                or not self.is_focus_posts():
-            return
-
+        
         # must get focus data before all set_state, as after rerender, focus lost
-        post = self.get_focus_post()
-
+        # post = self.get_focus_post()
         self.load_posts('favorite')
         posts_favorite = self.get_posts('favorite')
         if not posts_favorite:
+            self.set_flush_msg('Can\'t favorite, Please view/load favorite page first.')
             return
 
         self.set_state({'loading': True, 'loading_content': 'updating favorite...'})
@@ -515,33 +568,53 @@ class App(Component):
 
         threading.Thread(target=bgf).start()
 
-    def open_comment(self):
-        if self.state['show_help'] \
-                or not self.is_focus_posts():
+    def can_do_auth_action(self):
+        if not self.state['is_login']:
+            self.set_flush_msg('Please login first.')
+            return False
+
+        if self.state['loading'] \
+                or self.state['show_help']:
             return
 
-        post = self.get_focus_post()
-        webbrowser.open_new_tab(utils.format_url(post['comment_url']))
+        page_meta = self.hn_data.pages[self.state['current_page_type']]
+        if page_meta['login']: 
+            self.set_flush_msg('Can\'t upvote/favorite in authed pages now.')
+            return False
 
-    def get_focus_post(self):
-        # post_idx = self.root_el.contents[self.posts_focus_postion()][0].contents[1][0].original_widget.focus_position - 1
-        col_el = self.root_el.contents[self.posts_focus_postion()][0]
-        identity = col_el.contents[1][0].original_widget.get_focus_widgets()[2].identity
-        post = [v for v in self.get_posts(self.state['current_page_type']) 
-                if utils.get_post_identity(v) == identity][0]
-        return post
+        return True
+
+    def set_flush_msg(self, s):
+        if self.flush_msg_timer:
+            self.flush_msg_timer.cancel()
+
+        self.set_state({'flush_msg': s})
+        self.flush_msg_timer = threading.Timer(self.flush_msg_stay, self.clear_flush_msg)
+        self.flush_msg_timer.start()
+
+    def clear_flush_msg(self):
+        self.set_state({'flush_msg': ''})
+        
+   #def get_focus_post(self):
+   #    # post_idx = self.root_el.contents[self.posts_focus_postion()][0].contents[1][0].original_widget.focus_position - 1
+   #    col_el = self.root_el.contents[self.posts_focus_postion()][0]
+   #    # -1 or 2
+   #    identity = col_el.contents[1][0].original_widget.get_focus_widgets()[-1].identity
+   #    post = [v for v in self.get_posts(self.state['current_page_type']) 
+   #            if utils.get_post_identity(v) == identity][0]
+   #    return post
+
+   #def is_focus_posts(self):
+   #    pos = self.posts_focus_postion()
+   #    l = len(self.root_el.contents)
+   #    return self.root_el.focus_position == pos and l > 1 \
+   #           and self.root_el.contents[pos][0].focus_position == 1
 
     def is_focus_login(self):
         return self.root_el.focus_position == 1 and len(self.root_el.contents) > 1
 
     def focus_login(self):
         self.root_el.focus_position = 1
-
-    def is_focus_posts(self):
-        pos = self.posts_focus_postion()
-        l = len(self.root_el.contents)
-        return self.root_el.focus_position == pos and l > 1 \
-               and self.root_el.contents[pos][0].focus_position == 1
 
     def focus_posts(self):
         self.root_el.focus_position = self.posts_focus_postion()
@@ -568,6 +641,7 @@ class App(Component):
         search_keyword = self.state['search_keyword']
         current_page_type = self.state['current_page_type']
         posts = self.get_posts(current_page_type)
+        flush_msg = self.state['flush_msg']
 
         if current_sort != 'default':
             posts = self.sort.by_field(posts, current_sort, self.state['current_sort_dir'])
@@ -581,13 +655,9 @@ class App(Component):
                     self.get_posts('upvoted') + self.get_posts('favorite'))
         posts_filtered = self.search.by_cat(posts_searched, current_cat)
 
-        loading_el = urwid.ListBox([urwid.Text(config.app_name, align='center')])
-        loading_el = urwid.AttrMap(loading_el, 'page_title')
-        if self.state['loading']:
-            s = 'Loading %s...' % self.state['loading_content']
-            loading_el = urwid.ListBox([urwid.Text(s, align='center')])
-            loading_el = urwid.AttrMap(loading_el, 'loading')
-
+        page_title_el = React.create_element(PageTitle, 'page_title',
+                flush_msg=flush_msg, loading=self.state['loading'],
+                loading_content=self.state['loading_content'])
         self.login_el = React.create_element(LoginForm, 'login', 
                 is_login=is_login, on_login=self.on_login, 
                 username=self.state['username'], password=self.state['password'],
@@ -601,15 +671,15 @@ class App(Component):
                 analyze=self.analyze)
         posts_el = React.create_element(Posts, 'posts',
                 posts=posts_filtered, page_type=current_page_type,
-                posts_upvoted=self.get_posts('upvoted'), posts_favorite=self.get_posts('favorite'))
+                posts_upvoted=self.get_posts('upvoted'), posts_favorite=self.get_posts('favorite'),
+                trigger_upvote=self.trigger_upvote, trigger_favorite=self.trigger_favorite)
         body_el = urwid.Columns([('weight', 2, side_bar_el), ('weight', 10, posts_el)])
+        body_el.focus_position = 1
 
         return [
-            (loading_el, ('weight', .2)), 
+            (page_title_el, ('weight', .2)), 
             (self.login_el, ('weight', .5)), 
             (page_btns_el, ('weight', .5)), 
-            # (side_bar_el, ('weight', .5)),
-            # (posts_el, ('weight', 10))
             (body_el, ('weight', 10))
         ]
 
@@ -617,9 +687,11 @@ class App(Component):
 palette = [
         ('page_title', 'bold', 'dark gray'),
         ('reversed', '', 'dark gray'),
+        ('flush_msg', 'yellow', ''),
         ('loading', 'yellow', 'dark green'),
         ('cat', 'dark green', ''),
         ('subtext', 'dark gray', ''),
+        ('btn', 'bold', 'black'),
         ('highlight', 'dark red', ''),
         ('section_header', 'bold', 'black'),
 

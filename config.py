@@ -17,7 +17,7 @@ hn_pages = dict(
         hot={
             'url': '/',
             'saved': 'data/hn_hot.json',
-            'max_page': 3,
+            'max_page': 1,
             'login': False,
             }, 
         latest={

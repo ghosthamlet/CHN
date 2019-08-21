@@ -81,6 +81,9 @@ class ReactConsole:
     def render(app, root_el, palette=None):
         global _APP, _ROOT_EL, _UPDATE_PIPE
 
+        # reset for dev in repl
+        React.instances = {}
+
         _ROOT_EL = root_el
         _APP, el = app
         _APP.mount(el)
