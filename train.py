@@ -10,27 +10,29 @@ from sklearn.svm import LinearSVC
 from sklearn.pipeline import Pipeline
 
 
-nlp = spacy.load('en_core_web_sm')
-parser = English()
+# this did not load any external model, even en_core_web_sm
+_nlp = English()
+# _nlp = spacy.load('en_core_web_sm')
+# too slow
+# _nlp = spacy.load('en_core_web_md')
 
 
 def spacy_tokenizer(sentence):
     stop_words = spacy.lang.en.stop_words.STOP_WORDS
-    doc = parser(sentence)
+    doc = _nlp(sentence)
 
-    doc = [word.lemma_.lower().strip() 
-           if word.lemma_ != "-PRON-" else word.lower_ 
-           for word in doc ]
+    doc = [w.lemma_.lower().strip() 
+           if w.lemma_ != "-PRON-" else w.lower_ 
+           for w in doc]
 
-    doc = [word for word in doc 
-           if word not in stop_words 
-           and word not in string.punctuation]
+    doc = [w for w in doc 
+           if w not in stop_words 
+           and w not in string.punctuation]
 
     return doc
 
 
-# class TextCleaner(TransformerMixin):
-class predictors(TransformerMixin):
+class TextCleaner(TransformerMixin):
     def transform(self, X, **transform_params):
         return [clean_text(text) for text in X]
 

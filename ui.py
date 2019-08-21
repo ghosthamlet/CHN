@@ -103,7 +103,7 @@ class Help(Component):
         NOTICE:
         0. login is safe, just cookies will save on your computer, 
            accounts will not save, not send to any servers
-        1. Login may FAILED! when you try many times wrong username/password, your ip maybe locked by HN, 
+        1. login may FAILED! when you try many times wrong username/password, your ip maybe locked by HN, 
            and it will use google reCAPTCHA to verify your login, you have to wait HN to remove reCAPTCHA to login CHN again
         2. use arrows to navigate
         3. sometimes after loading new page, ui maybe frozen, hit t to activate it
@@ -176,7 +176,7 @@ class LoginForm(Component):
         return (self.search_el, )
 
     def render_help_tip(self):
-        return urwid.Text('(Press h to show helps)')
+        return urwid.Text('(Hit h to show helps)')
 
     def on_click_search(self):
         keyword = self.search_el.edit_text.strip().lower()
@@ -709,6 +709,7 @@ palette = [
 
 if __name__ == '__main__':
     from train import *
+
     root_el = HnPile([])
     ReactConsole.render(React.create_element(App, 'app', root_el=root_el, return_instance=True), 
             root_el, palette=palette)
