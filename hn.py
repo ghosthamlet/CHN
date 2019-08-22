@@ -3,27 +3,20 @@
 import os
 import json
 import logging
-
-from bs4 import BeautifulSoup
-
-import config
-import requests
 import pickle
 
-# just for pyinstaller
-import numpy.random.common
-import numpy.random.bounded_integers
-import numpy.random.entropy
-import en_core_web_sm
-import en_core_web_md
-import srsly.msgpack.util
-
+import requests
 import numpy as np
 import spacy
+from spacy.util import set_data_path
+from bs4 import BeautifulSoup
 
 from train import *
+import config
 import utils
 
+# for bundled 
+# set_data_path('./')
 
 logger = utils.get_logger()
 nlp = spacy.load('en_core_web_md')
@@ -266,7 +259,8 @@ class HnAnalyze:
         identities = [utils.get_post_identity(v) for v in posts_recommended]
         posts = [v for v in new_posts if utils.get_post_identity(v) not in identities]
         posts_vector = np.array([nlp(v['title']).vector for v in posts])
-        posts_recommended_vector = np.array([nlp(v['title']).vector for v in posts_recommended[:1000]])
+        posts_recommended_vector = np.array([nlp(v['title']).vector 
+                                             for v in posts_recommended[:config.hn_recommend_compare]])
         scores = posts_vector.dot(posts_recommended_vector.T).sum(axis=1)
 
        #for post in posts:

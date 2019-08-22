@@ -12,10 +12,9 @@ from urllib.parse import urlparse
 from urllib import request, parse
 
 from bs4 import BeautifulSoup
+import extract_text as et
 
 import config
-
-import extract_text as et
 
 
 def crawle_reddit():

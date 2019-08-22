@@ -10,11 +10,10 @@ import locale
 
 import urwid
 
-from hn import HnData, HnClient, HnAnalyze, HnSearch, HnSort
-
-from react import React, ReactConsole, Component 
 import utils
 import config
+from hn import HnData, HnClient, HnAnalyze, HnSearch, HnSort
+from react import React, ReactConsole, Component 
 
 
 logger = utils.get_logger()
@@ -99,6 +98,7 @@ class Help(Component):
         r: refresh posts
         c: open comment page
         enter: open link page
+        ctrl c: quit
 
         NOTICE:
         0. login is safe, just cookies will save on your computer, 
@@ -404,7 +404,7 @@ class App(Component):
                 all_posts={},
                 show_help=False,
                 flush_msg='',
-                loading=True,
+                loading=False,
                 loading_content='',
         )
 
@@ -431,8 +431,12 @@ class App(Component):
         self.analyze.assoc_cat(posts)
         logger.info('loaded posts: %s' % len(posts))
 
+        if page_type == 'recommend':
+            posts = self.analyze.filter_recommend(posts, 
+                        self.get_posts('upvoted') + self.get_posts('favorite'))
+
         all_posts = {**self.state['all_posts'], page_type: posts}
-        self.set_state({'all_posts': all_posts, 'loading': False})
+        self.set_state({'all_posts': all_posts})
 
     def get_posts(self, page_type):
         return self.state['all_posts'].get(page_type, [])
@@ -467,12 +471,11 @@ class App(Component):
                 self.load_posts('upvoted')
                 self.download_posts('favorite')
                 self.load_posts('favorite')
-
             self.download_posts(page_type)
             self.load_posts(page_type)
             # XXX: load_posts already change loading, don't set loading again, or ui will forzen
-            # self.set_state({'loading': False, 'current_page_type': page_type})
-            self.set_state({'current_page_type': page_type})
+            self.set_state({'loading': False, 'current_page_type': page_type})
+            # self.set_state({'current_page_type': page_type})
 
         threading.Thread(target=bgf).start()
         # join will frozen ui, and can't show loading progress,
@@ -541,7 +544,7 @@ class App(Component):
             self.download_posts('upvoted')
             self.load_posts('upvoted')
             # XXX: load_posts already change loading, don't set loading again, or ui will forzen
-            # self.set_state({'loading': False})
+            self.set_state({'loading': False})
             # self.refresh()
 
         threading.Thread(target=bgf).start()
@@ -568,7 +571,7 @@ class App(Component):
                 self.data.remove_post('favorite', post)
             self.load_posts('favorite')
             # XXX: load_posts already change loading, don't set loading again, or ui will forzen
-            # self.set_state({'loading': False})
+            self.set_state({'loading': False})
             # self.refresh()
 
         threading.Thread(target=bgf).start()
@@ -634,7 +637,9 @@ class App(Component):
         self.set_state({'password': s}, disable_render=True)
 
     def component_did_mount(self):
+        self.set_state({'loading': True})
         self.init()
+        self.set_state({'loading': False})
 
     def render(self):
         if self.state['show_help']:
@@ -655,9 +660,6 @@ class App(Component):
            posts_searched = self.search.by_keyword(posts, search_keyword) 
         else:
             posts_searched = posts
-        if current_page_type == 'recommend':
-            posts_searched = self.analyze.filter_recommend(posts_searched, 
-                    self.get_posts('upvoted') + self.get_posts('favorite'))
         posts_filtered = self.search.by_cat(posts_searched, current_cat)
 
         page_title_el = React.create_element(PageTitle, 'page_title',
@@ -708,7 +710,11 @@ palette = [
 ]
 
 if __name__ == '__main__':
+    import sys
     from train import *
+
+    if len(sys.argv) > 2:
+        proxy = sys.argv[1]
 
     root_el = HnPile([])
     ReactConsole.render(React.create_element(App, 'app', root_el=root_el, return_instance=True), 

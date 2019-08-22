@@ -3,22 +3,28 @@ numpy
 sklearn
 pandas
 pandas_summary
+lxml
 beautifulsoup4
 pandas-profiling
 imbalanced-learn
-# gensim
 requests
+matplotlib
+urwid
+spacy
+# python3 -m spacy download en_core_web_sm
+# python3 -m spacy download en_core_web_md
+
 # interactive table
 # https://blog.ouseful.info/2016/12/29/simple-view-controls-for-pandas-dataframes-using-ipython-widgets/
 # https://alysivji.github.io/reactive-dashboards-with-dash.html
 # qgrid
 # jupyter-datatables
-spacy
-# python3 -m spacy download en_core_web_sm
-# python3 -m spacy download en_core_web_md
-matplotlib
-hyperparameter-hunter
+# gensim
+# hyperparameter-hunter
 # pyinstaller
 # seaborn>=0.8.1
 # torch<0.4
 # torchtext>=0.2.3
+
+# create venv: virtualenv chn_venv -p python3
+# python3 -m venv chn_venv failed

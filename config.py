@@ -5,6 +5,7 @@ proxy_host = '127.0.0.1:19180'
 hn_domain = 'https://news.ycombinator.com'
 hn_datetime_format = '%H:%M %b %d, %Y'
 hn_date_format = '%b %d, %Y'
+hn_recommend_compare = 100
 
 hn_pages = dict(
         recommend={
