@@ -230,3 +230,9 @@ def parse_resp(resp):
         return None
     return soup
 
+
+if __name__ == '__main__':
+    crawle_reddit()
+    reddit_json_to_csv()
+    # save_webpage_text()
+

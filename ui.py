@@ -305,7 +305,7 @@ class Posts(Component):
     def create_list(self, page_type, choices):
         upvoteds = [utils.get_post_identity(v) for v in self.props['posts_upvoted']]
         favorites = [utils.get_post_identity(v) for v in self.props['posts_favorite']]
-        body = [urwid.AttrMap(urwid.Text(page_type, align='center'), 'section_header'), urwid.Divider()]
+        body = [urwid.AttrMap(urwid.Text('*%s*' % page_type, align='center'), 'section_header'), urwid.Divider()]
 
         for i, p in enumerate(choices):
             identity = utils.get_post_identity(p)
@@ -702,10 +702,6 @@ palette = [
         ('btn_focus', '', 'black'),
         ('highlight', 'dark red', ''),
         ('section_header', 'bold', 'black'),
-
-        ('headings', 'white,underline', 'black', 'bold,underline'),
-        ('body_text', 'dark cyan', 'standout'),
-        ('section_text', 'body_text'),
 ]
 
 if __name__ == '__main__':
