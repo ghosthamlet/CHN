@@ -16,6 +16,7 @@ import numpy.random.bounded_integers
 import numpy.random.entropy
 import en_core_web_sm
 import en_core_web_md
+import srsly.msgpack.util
 
 import numpy as np
 import spacy
