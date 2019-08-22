@@ -27,7 +27,7 @@ UI code is in reactjs style, easy and familiar for many developer who like react
 * browser all HN list pages include your submitted/voted/favorite page
 * use classifer or search to filter different page posts
 * auto recommend posts for your interest
-and some other in [TODO](#todo) 
+create comment/post and view detail did not implement, they are in [TODO](#todo)
 
 
 ## Installation
