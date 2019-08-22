@@ -101,7 +101,7 @@ NOTICE:
  
 
 ## Train
-### About the data 
+### About the dataset
 Training data has around 150000 samples, were collected from reddit.com. 
 In the start, there are 110 cats, every cat is a manually selected subreddit, 
 all front page and top page posts in the subreddit formed the whole dataset.
@@ -112,21 +112,35 @@ For more info see in Train.ipynb *Explore data section*.
 
 ### About the classifer
 I taked the following experiments to select classifer:
+
 CATS                CLASSIFER                   ACCURACY           RECALL
 -----------------------------------------------------------------------------------------------
 110                 LogisticRegression          around 0.55        around 0.55
+
 110                 ComplementNB                around 0.55        around 0.55
+
 110                 SGDClassifier               around 0.55        around 0.55
+
 110                 RandomForestClassifier      not fin            not fin
+
 110                 SVC                         not fin            not fin
+
 110                 SGDClassifier               around 0.55        around 0.55
+
 110                 LinearSVC                   around 0.55        around 0.55
+
 101                 LinearSVC                   0.59               around 0.59
+
 57                  LinearSVC                   0.62               around 0.62
+
 41                  LinearSVC                   0.65               around 0.65
+
 34over_sampling     LinearSVC                   0.73               0.73 (val/test accuracy is 0.63)
+
 34under_sampling    LinearSVC                   under 0.7          under 0.7
+
 34                  LinearSVC                   0.709              0.71
+
 * i did not record the experiments history, the ACCURACY/RECALL with around is approximate value, 
  i will redo these with hyperparameter-hunter when i have time
 * 'not fin' classifer is too slow on my laptop to fin
@@ -139,13 +153,19 @@ CATS                CLASSIFER                   ACCURACY           RECALL
   except the classifer with imblearn.over_sampling.SMOTE resample
 
 Some experiments tried in kaggle GPU kernel:
+
 CATS                CLASSIFER                                    TRIAN ACCURACY     TEST ACCURACY
 -----------------------------------------------------------------------------------------------
 34                  LinearSVC with word2vec                       around 0.55        around 0.55
+
 34                  XGBoost                                       not fin            not fin
+
 34                  AWD_LSTM (fine tuning with fastai)            around 0.68        around 0.68
+
 34                  Transformer (fine tuning with fastai)         around 0.60        around 0.60
+
 34                  GPT2+AWD_LSTM (fine tuning with fastai)       not fin            not fin
+
 34                  BERT (fine tuning with pytorch-transformers)  around 0.78        around 0.78
 
 * GPT2+AWD_LSTM, GPT2 for generate the posts body from its title, the body generated is good, 
