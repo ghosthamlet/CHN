@@ -113,8 +113,9 @@ For more info see in Train.ipynb *Explore data section*.
 ### About the classifer
 I taked the following experiments to select classifer:
 
+<pre>
 CATS                CLASSIFER                   ACCURACY           RECALL
------------------------------------------------------------------------------------------------
+
 110                 LogisticRegression          around 0.55        around 0.55
 
 110                 ComplementNB                around 0.55        around 0.55
@@ -140,6 +141,7 @@ CATS                CLASSIFER                   ACCURACY           RECALL
 34under_sampling    LinearSVC                   under 0.7          under 0.7
 
 34                  LinearSVC                   0.709              0.71
+</pre>
 
 * i did not record the experiments history, the ACCURACY/RECALL with around is approximate value, 
  i will redo these with hyperparameter-hunter when i have time
@@ -154,8 +156,9 @@ CATS                CLASSIFER                   ACCURACY           RECALL
 
 Some experiments tried in kaggle GPU kernel:
 
+<pre>
 CATS                CLASSIFER                                    TRIAN ACCURACY     TEST ACCURACY
------------------------------------------------------------------------------------------------
+
 34                  LinearSVC with word2vec                       around 0.55        around 0.55
 
 34                  XGBoost                                       not fin            not fin
@@ -167,6 +170,7 @@ CATS                CLASSIFER                                    TRIAN ACCURACY 
 34                  GPT2+AWD_LSTM (fine tuning with fastai)       not fin            not fin
 
 34                  BERT (fine tuning with pytorch-transformers)  around 0.78        around 0.78
+</pre>
 
 * GPT2+AWD_LSTM, GPT2 for generate the posts body from its title, the body generated is good, 
   but did not good enough to closely related to the title subject, so i did not use it,
