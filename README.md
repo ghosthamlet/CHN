@@ -99,7 +99,7 @@ NOTICE:
 ### About the data 
 ### About the classifer
 ### Train your own classifer
-1. crawl subreddits posts, run crawler.py, you can use exists data/reddit.csv and skip this step
+1. change reddit crawl settings in config.py, crawl subreddits posts by run crawler.py, you can use exists data/reddit.csv and skip this step
 2. train in Train.ipynb, read some classify accuracy comments in it 
 3. change hn_classifer_model in config.py with saved model of the previous step 
 
