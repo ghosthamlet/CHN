@@ -24,9 +24,13 @@ UI code is in reactjs style, easy and familiar for many developer who like react
 
 
 ## Notice
+CHN only tested in Ubuntu in its default terminal, ONLY work with python3.6, and maybe python3+, macOS/windows and other OS did not tested.
+
+CHN is still in early stage, may have many bugs and performance problems, but it is aslo useful now.
+
 Classifer just have around 71% accuracy now, as it is trained by classify just post titles for 34 categories,
 and the data is not so many, has only around 150000 samples, quite imbalanced.
-you can train your own classifer, more details about the classifer and train method see [Train your own classifer](#train)
+you can train your own classifer, more details about the data/classifer and train method see [Train your own classifer](#train)
 
 
 ## Features
