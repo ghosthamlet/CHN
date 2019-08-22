@@ -59,18 +59,24 @@ hn_pages = dict(
         submitted={
             'url': '/submitted?id=%s',
             'saved': 'data/hn_submitted.json',
+            # 0 to get all this type pages
+            # 'max_page': 0,
             'max_page': 10,
             'login': True,
             }, 
         upvoted={
             'url': '/upvoted?id=%s',
             'saved': 'data/hn_upvoted.json',
+            # 0 to get all this type pages
+            # 'max_page': 0,
             'max_page': 10,
             'login': True,
             }, 
         favorite={
             'url': '/favorites?id=%s',
             'saved': 'data/hn_favorite.json',
+            # 0 to get all this type pages
+            # 'max_page': 0,
             'max_page': 10,
             'login': True,
             },
