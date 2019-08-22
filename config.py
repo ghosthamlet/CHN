@@ -1,7 +1,8 @@
 #coding=utf8
 
 app_name = 'CHN'
-proxy_host = '127.0.0.1:19180'
+# proxy_host = '127.0.0.1:19180'
+proxy_host = ''
 hn_domain = 'https://news.ycombinator.com'
 hn_datetime_format = '%H:%M %b %d, %Y'
 hn_date_format = '%b %d, %Y'

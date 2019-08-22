@@ -11,7 +11,6 @@ import spacy
 from spacy.util import set_data_path
 from bs4 import BeautifulSoup
 
-from train import *
 import config
 import utils
 
@@ -55,7 +54,7 @@ class HnClient:
         self.proxy_dict = { 
               'http': config.proxy_host, 
               'https': config.proxy_host, 
-            }
+            } if config.proxy_host else None
 
         if os.path.exists(self.cookie_file):
             with open(self.cookie_file, 'br') as f:
@@ -198,8 +197,9 @@ class HnClient:
         kwargs = dict(
                 # login post will response cookie, if follow redirect, can't get that cookie
                 allow_redirects=False,
-                proxies=self.proxy_dict
         )
+        if self.proxy_dict:
+            kwargs['proxies'] = self.proxy_dict
         if data is not None:
             kwargs['data'] = data
         if self.cookies is not None:
@@ -213,8 +213,6 @@ class HnClient:
 
 class HnAnalyze:
     def __init__(self):
-        # have to run this line in __main__ module??
-        # from train import *
         with open(config.hn_classifer_model, 'rb') as f:
             self.model = pickle.load(f)
 

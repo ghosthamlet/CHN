@@ -704,19 +704,19 @@ palette = [
         ('section_header', 'bold', 'black'),
 
         ('headings', 'white,underline', 'black', 'bold,underline'),
-        ('body_text', 'dark cyan', 'light gray'),
-        ('buttons', 'yellow', 'dark green', 'standout'),
+        ('body_text', 'dark cyan', 'standout'),
         ('section_text', 'body_text'),
 ]
 
 if __name__ == '__main__':
     import sys
+    # used by loaded classifer model
     from train import *
 
-    if len(sys.argv) > 2:
-        proxy = sys.argv[1]
+    if len(sys.argv) == 3 and sys.argv[1] == '-p':
+        config.proxy_host = sys.argv[2]
 
     root_el = HnPile([])
-    ReactConsole.render(React.create_element(App, 'app', root_el=root_el, return_instance=True), 
-            root_el, palette=palette)
+    app_el = React.create_element(App, 'app', root_el=root_el, return_instance=True)
+    ReactConsole.render(app_el, root_el, palette=palette)
 

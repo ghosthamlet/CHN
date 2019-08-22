@@ -54,6 +54,7 @@ pip3 install -r requirements.txt
 RUN:
 
 python3 ui.py
+or use proxy: python3 ui.py -p 127.0.0.1:19180
 
 THAT's All.
 
