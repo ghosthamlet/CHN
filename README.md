@@ -34,6 +34,7 @@ you can train your own classifer, more details about the classifer and train met
 * browser all HN list pages include your submitted/voted/favorite page
 * use classifer or search to filter different page posts
 * auto recommend posts for your interest
+
 create comment/post and view detail did not implement, they are in [TODO](#todo)
 
 
