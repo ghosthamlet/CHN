@@ -13,6 +13,7 @@ UI code is in reactjs style, easy and familiar for many developer who like react
 
 ## Table of Contents
 
+* [NOTICE](#notice)  
 * [Features](#features)  
 * [Installation](#installation)  
 * [Usage](#usage)  
@@ -20,6 +21,12 @@ UI code is in reactjs style, easy and familiar for many developer who like react
 * [TODO](#todo)  
 * [Train your own classifer](#train)  
 * [License](#license)  
+
+
+## Notice
+Classifer just have around 71% accuracy now, as it is trained by classify just post titles for 34 categories,
+and the data is not so many, has only around 150000 samples, quite imbalanced.
+you can train your own classifer, more details about the classifer and train method see [Train your own classifer](#train)
 
 
 ## Features
@@ -46,7 +53,7 @@ python3 ui.py
 
 SHORTCUTS:
 
-    h: show/close this screen
+    h: show/close help screen
 
     s: goto search keyword, use space to seperate multi keywords
 
@@ -67,17 +74,17 @@ SHORTCUTS:
 
 NOTICE:
 
-    0. login is safe, just cookies will save on your computer, 
+    * login is safe, just cookies will save on your computer, 
        accounts will not save, not send to any servers
 
-    1. login may FAILED! when you try many times wrong username/password, your ip maybe locked by HN, 
+    * login may FAILED! when you try many times wrong username/password, your ip maybe locked by HN, 
        and it will use google reCAPTCHA to verify your login, you have to wait HN to remove reCAPTCHA to login CHN again
 
-    2. use arrows to navigate
+    * use arrows to navigate
 
-    3. sometimes after loading new page, ui maybe frozen, hit t to activate it
+    * sometimes after loading new page, ui maybe frozen, hit t to activate it
 
-    4. load submitted/upvoted/favorite pages maybe very slow first time if you have many data, 
+    * load submitted/upvoted/favorite pages maybe very slow first time if you have many data, 
        but after first load it will be fast
  
 
