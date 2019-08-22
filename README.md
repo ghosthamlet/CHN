@@ -39,7 +39,10 @@ pip3 install -r requirements.txt
 
 
 ## Usage
+RUN:
+
 python3 ui.py
+
 
 SHORTCUTS:
 
