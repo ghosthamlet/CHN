@@ -10,6 +10,13 @@ import config
 import requests
 import pickle
 
+# just for pyinstaller
+import numpy.random.common
+import numpy.random.bounded_integers
+import numpy.random.entropy
+import en_core_web_sm
+import en_core_web_md
+
 import numpy as np
 import spacy
 

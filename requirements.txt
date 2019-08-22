@@ -1,23 +1,24 @@
-
 wheel
 numpy
-hyperparameter-hunter
 sklearn
 pandas
 pandas_summary
 beautifulsoup4
 pandas-profiling
 imbalanced-learn
-gensim
+# gensim
 requests
 # interactive table
 # https://blog.ouseful.info/2016/12/29/simple-view-controls-for-pandas-dataframes-using-ipython-widgets/
 # https://alysivji.github.io/reactive-dashboards-with-dash.html
-qgrid
-jupyter-datatables
+# qgrid
+# jupyter-datatables
 spacy
+# python3 -m spacy download en_core_web_sm
 # python3 -m spacy download en_core_web_md
 matplotlib
+hyperparameter-hunter
+# pyinstaller
 # seaborn>=0.8.1
 # torch<0.4
 # torchtext>=0.2.3
