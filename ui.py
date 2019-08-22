@@ -89,8 +89,8 @@ class HnPile(urwid.Pile):
 class Help(Component):
     TEXT = '''
     HELP:
-        SHORTCUTS:
-        h: show/close this screen
+    SHORTCUTS:
+        h: show/close help screen
         s: goto search keyword, use space to seperate multi keywords
         t: goto select page type, or go back to posts
         v: upvote current post(NOTE: you have to view/load upvoted page first)
@@ -100,15 +100,15 @@ class Help(Component):
         enter: open link page
         ctrl c: quit
 
-        NOTICE:
-        0. login is safe, just cookies will save on your computer, 
-           accounts will not save, not send to any servers
-        1. login may FAILED! when you try many times wrong username/password, your ip maybe locked by HN, 
-           and it will use google reCAPTCHA to verify your login, you have to wait HN to remove reCAPTCHA to login CHN again
-        2. use arrows to navigate
-        3. sometimes after loading new page, ui maybe frozen, hit t to activate it
-        4. load submitted/upvoted/favorite pages maybe very slow first time if you have many data, 
-           but after first load it will be fast
+    NOTICE:
+        * login is safe, just cookies will save on your computer, 
+          accounts will not save, not send to any servers
+        * login may FAILED! when you try many times wrong username/password, your ip maybe locked by HN, 
+          and it will use google reCAPTCHA to verify your login, you have to wait HN to remove reCAPTCHA to login CHN again
+        * use arrows to navigate
+        * sometimes after loading new page, ui maybe frozen, hit t to activate it
+        * load submitted/upvoted/favorite pages maybe very slow first time if you have many data, 
+          but after first load it will be fast
     '''
     def render(self):
         return urwid.ListBox([urwid.Text(Help.TEXT)])
@@ -463,6 +463,7 @@ class App(Component):
         if self.state['loading']:
             return
 
+        logger.info('select page: %s' % page_type)
         self.set_state({'loading': True, 'loading_content': page_type})
 
         def bgf():
@@ -485,10 +486,9 @@ class App(Component):
     def download_posts(self, page_type):
         page_meta = self.data.pages[page_type]
         url = page_meta['url'] % self.state['username'] if 'id=%s' in page_meta['url'] else page_meta['url']
-        logger.info('select page: %s' % url)
         self.client.download_posts(url, page_type, 
                 incremental=self.client.can_incremental(page_type), refresh=not page_meta['login'])
-        logger.info('page saved: %s' % url)
+        logger.info('url saved: %s' % url)
 
     def focus_search(self):
         if self.state['loading'] or self.state['show_help'] or self.is_focus_login():

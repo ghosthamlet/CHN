@@ -117,7 +117,6 @@ class HnClient:
             if incremental:
                 posts.reverse()
 
-        logger.info('---')
         logger.info(page_type)
         logger.info(len(title_els))
          
@@ -147,10 +146,6 @@ class HnClient:
                 age = utils.absolute_time(age_els[i].text.replace('on ', ''))
             vote_a_el = vote_el.select_one('a') if vote_el else None
             vote_url = vote_a_el.attrs['href'] if vote_a_el else ''
-
-            logger.info('---')
-            logger.info(page_type)
-            logger.info(url)
 
             if incremental and latest_post and url == latest_post['url']:
                 end_request = True
@@ -220,7 +215,7 @@ class HnAnalyze:
     def __init__(self):
         # have to run this line in __main__ module??
         # from train import *
-        with open('data/LinearSVC_model.pkl', 'rb') as f:
+        with open(config.hn_classifer_model, 'rb') as f:
             self.model = pickle.load(f)
 
     def assoc_cat(self, posts):
@@ -245,17 +240,8 @@ class HnAnalyze:
       # idxs = np.argsort(probs)[0][-3:][::-1]
       # return self.model.classes_[idxs]
 
-    def maybe_upvote(self, post, upvoted_posts):
-        """check if post cat is in upvoted_posts most common cats,
-        TODO: get posts in hot/lastest created older then latest upvoted but not in upvoted, 
-              tag as non_upvote, train with upvoted"""
-
-    def maybe_favorite(self, post, favorite_posts):
-        """check if post cat is in favorite_posts most common cats,
-        TODO: get posts in hot/lastest created older then latest favorite but not in favorite, 
-              tag as non_favorite, train with favorite"""
-
     def filter_recommend(self, new_posts, posts_recommended):
+        '''recommend posts in `new_posts` by and not in `posts_recommended`'''
         identities = [utils.get_post_identity(v) for v in posts_recommended]
         posts = [v for v in new_posts if utils.get_post_identity(v) not in identities]
         posts_vector = np.array([nlp(v['title']).vector for v in posts])

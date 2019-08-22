@@ -96,8 +96,12 @@ NOTICE:
  
 
 ## Train
+### About the data 
+### About the classifer
 ### Train your own classifer
-
+1. crawl subreddits posts, run crawler.py, you can use exists data/reddit.csv and skip this step
+2. train in Train.ipynb, read some classify accuracy comments in it 
+3. change hn_classifer_model in config.py with saved model of the previous step 
 
 
 ## Settings
@@ -105,6 +109,7 @@ see config.py
 
 
 ## TODO
+* use hyperparameter-hunter to manage machine learning experiments
 * optimize classifer accuracy by crawl and classify posts body not just
   title, and use deep transfer learning(maybe fine tuning BERT) to classify
 * optimize recommender performance by compare posts body, aslo optimize its
