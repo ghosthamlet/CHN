@@ -2,7 +2,7 @@
 
 <p align="center">
 A text-based interface (TUI) to view and interact with Hacker News from your Console.<br>
-with auto classifer and recommender with relate to your upvotes and favorites.<br>
+With auto classifer and recommender with relate to your upvotes and favorites.<br>
 UI code is in reactjs style, easy and familiar for many developer who like reactjs.
 </p>
 
@@ -32,7 +32,9 @@ and some other in [TODO](#todo)
 
 ## Installation
 git clone https://github.com/ghosthamlet/CHN.git
+
 cd CHN
+
 pip3 install -r requirements.txt
 
 
@@ -40,23 +42,38 @@ pip3 install -r requirements.txt
 python3 ui.py
 
 SHORTCUTS:
+
     h: show/close this screen
+
     s: goto search keyword, use space to seperate multi keywords
+
     t: goto select page type, or go back to posts
+
     v: upvote current post(NOTE: you have to view/load upvoted page first)
+
     o: favorite current post(NOTE: you have to view/load favorite page first)
+
     r: refresh posts
+
     c: open comment page
+
     enter: open link page
+
     ctrl c: quit
 
+
 NOTICE:
+
     0. login is safe, just cookies will save on your computer, 
        accounts will not save, not send to any servers
+
     1. login may FAILED! when you try many times wrong username/password, your ip maybe locked by HN, 
        and it will use google reCAPTCHA to verify your login, you have to wait HN to remove reCAPTCHA to login CHN again
+
     2. use arrows to navigate
+
     3. sometimes after loading new page, ui maybe frozen, hit t to activate it
+
     4. load submitted/upvoted/favorite pages maybe very slow first time if you have many data, 
        but after first load it will be fast
  
