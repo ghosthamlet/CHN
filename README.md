@@ -84,6 +84,7 @@ SHORTCUTS:
 
 
 NOTICE:
+
     * when ui frozen, hit t, or ctrl c to quit and restart
 
     * login is safe, just cookies will save on your computer, 

@@ -101,6 +101,7 @@ class Help(Component):
         ctrl c: quit
 
     NOTICE:
+        * when ui frozen, hit t, or ctrl c to quit and restart
         * login is safe, just cookies will save on your computer, 
           accounts will not save, not send to any servers
         * login may FAILED! when you try many times wrong username/password, your ip maybe locked by HN, 
