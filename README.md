@@ -39,7 +39,7 @@ you can train your own classifer, more details about the data/classifer and trai
 * use classifer or search to filter different page posts
 * auto recommend posts for your interest
 
-create comment/post and view detail did not implement, they are in [TODO](#todo)
+create comment/post and view detail did not implement, there are shortcuts to open web browser, they will be implemented and in [TODO](#todo)
 
 
 ## Installation
