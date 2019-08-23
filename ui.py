@@ -381,6 +381,7 @@ class App(Component):
     def __init__(self, **props):
         super().__init__(**props)
 
+        print('**************** Loading CHN... ****************')
         self.root_el = self.props['root_el']
         self.login_el = None
 

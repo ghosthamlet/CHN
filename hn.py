@@ -18,6 +18,8 @@ import utils
 # set_data_path('./')
 
 logger = utils.get_logger()
+
+print('**************** Loading model... ****************')
 nlp = spacy.load('en_core_web_md')
 
 
