@@ -21,10 +21,3 @@ COPY . /app/
 
 # must after pip install, install have to use root perm
 # USER chn
-
-# CMD ["python", "ui.py", "-p", "127.0.0.1:19180"]
-
-# can't open web browser to show comment/post page from docker
-# docker run -it --rm --name CHN --volume /srv/CHN/data:/app/data ghosthamlet/CHN:latest python ui.py
-# use proxy
-# docker run -it --rm --net host --name CHN --volume /srv/CHN/data:/app/data ghosthamlet/CHN:latest python ui.py -p 127.0.0.1:19180

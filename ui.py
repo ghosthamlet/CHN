@@ -17,6 +17,7 @@ from react import React, ReactConsole, Component
 
 
 logger = utils.get_logger()
+# FIXME: run in docker can't work: unsupported locale setting
 locale.setlocale(locale.LC_TIME, 'en_US.UTF-8')
 
 

@@ -43,6 +43,18 @@ create comment/post and view detail did not implement, there are shortcuts to op
 
 
 ## Installation
+
+### From docker
+
+NOTICE: can't open web browser to show comment/post detail page from docker
+
+docker run -it --rm --name CHN --volume /srv/CHN/data:/app/data ghosthamlet/chn:latest python ui.py
+
+or use proxy: docker run --net host -it --rm --name CHN --volume /srv/CHN/data:/app/data ghosthamlet/chn:latest python ui.py -p 127.0.0.1:19180
+
+
+### From code
+
 git clone https://github.com/ghosthamlet/CHN.git
 
 cd CHN
@@ -53,15 +65,19 @@ python3 -m spacy download en_core_web_md
 
 
 ## Usage
-RUN:
 
+### From docker
+docker run -it --rm --name CHN --volume /srv/CHN/data:/app/data ghosthamlet/chn:latest python ui.py
+
+or use proxy: docker run --net host -it --rm --name CHN --volume /srv/CHN/data:/app/data ghosthamlet/chn:latest python ui.py -p 127.0.0.1:19180
+
+
+### From code
 python3 ui.py
 
 or use proxy: python3 ui.py -p 127.0.0.1:19180
 
 (change 127.0.0.1:19180 to your proxy address)
-
-THAT's All.
 
 
 SHORTCUTS:

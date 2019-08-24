@@ -7,7 +7,9 @@ hn_domain = 'https://news.ycombinator.com'
 hn_datetime_format = '%H:%M %b %d, %Y'
 hn_date_format = '%b %d, %Y'
 hn_recommend_compare = 100
-hn_classifer_model = 'data/LinearSVC_model.pkl'
+# model file can't put in data/, when mount data/ in docker, 
+# files in docker data/ can't be read, can only read host data/
+hn_classifer_model = 'model/LinearSVC_model.pkl'
 
 hn_pages = dict(
         recommend={
