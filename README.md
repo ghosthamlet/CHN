@@ -52,6 +52,8 @@ docker run -it --rm --name CHN --volume /srv/CHN/data:/app/data ghosthamlet/chn:
 
 or use proxy: docker run --net host -it --rm --name CHN --volume /srv/CHN/data:/app/data ghosthamlet/chn:latest python ui.py -p 127.0.0.1:19180
 
+(change 127.0.0.1:19180 to your proxy address)
+
 
 ### From code
 
@@ -70,6 +72,8 @@ python3 -m spacy download en_core_web_md
 docker run -it --rm --name CHN --volume /srv/CHN/data:/app/data ghosthamlet/chn:latest python ui.py
 
 or use proxy: docker run --net host -it --rm --name CHN --volume /srv/CHN/data:/app/data ghosthamlet/chn:latest python ui.py -p 127.0.0.1:19180
+
+(change 127.0.0.1:19180 to your proxy address)
 
 
 ### From code
