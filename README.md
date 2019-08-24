@@ -46,7 +46,7 @@ create comment/post and view detail did not implement, there are shortcuts to op
 
 ### From docker
 
-NOTICE: can't open web browser to show comment/post detail page from docker
+Notice: can't open web browser to show comment/post detail page from docker
 
 docker run -it --rm --name CHN --volume /srv/CHN/data:/app/data ghosthamlet/chn:latest python ui.py
 
@@ -84,7 +84,7 @@ or use proxy: python3 ui.py -p 127.0.0.1:19180
 (change 127.0.0.1:19180 to your proxy address)
 
 
-SHORTCUTS:
+### Shortcuts:
 
     h: show/close help screen
 
@@ -105,7 +105,7 @@ SHORTCUTS:
     ctrl c: quit
 
 
-NOTICE:
+### Notice:
 
     * when ui frozen, hit t, or ctrl c to quit and restart
 
