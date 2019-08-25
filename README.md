@@ -46,7 +46,7 @@ create comment/post and view detail did not implement, there are shortcuts to op
 
 ### By docker
 
-Notice: can't open web browser to show comment/post detail page from docker
+Notice: can't open web browser to show comment/post detail page from docker now, will fix it.
 
 docker run -it --rm --name CHN --volume /srv/CHN/data:/app/data ghosthamlet/chn:latest python ui.py
 
