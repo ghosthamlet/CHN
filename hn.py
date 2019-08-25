@@ -7,12 +7,18 @@ import pickle
 
 import requests
 import numpy as np
-import spacy
+# import spacy
+from spacy.lang.en import English
 from spacy.util import set_data_path
 from bs4 import BeautifulSoup
 
+from spacy.strings import hash_string
+from spacy.vectors import Vectors
+import en_core_web_md
+
 import config
 import utils
+from train import spacy_tokenizer
 
 # for bundled 
 # set_data_path('./')
@@ -20,7 +26,27 @@ import utils
 logger = utils.get_logger()
 
 print('**************** Loading model... ****************')
-nlp = spacy.load('en_core_web_md')
+# too slow
+# _nlp = spacy.load('en_core_web_md')
+_vectors = Vectors()
+# _vectors.from_disk('/home/han/.local/lib/python3.6/site-packages/en_core_web_md/en_core_web_md-2.1.0/vocab/') 
+_vectors.from_disk('%s/%s-%s/vocab/' % (en_core_web_md.__path__, en_core_web_md.__name__, en_core_web_md.__version__))
+_vector_size = _vectors.shape[1]
+
+def get_sent_vector(sent):
+    # use regexp tokenizer to speed up
+    vs = np.array([get_word_vector(w) for w in spacy_tokenizer(sent)])
+    if len(vs) > 0:
+        return vs.sum(axis=0) / vs.shape[0]
+    return np.zeros(_vector_size)
+
+def get_word_vector(w):
+    h = hash_string(w.lower())
+    i = _vectors.key2row.get(h, 0)
+    # i = i if len(_vectors.data) > i else 0:
+    if len(_vectors.data) > i:
+        return _vectors.data[i]
+    return np.zeros(_vector_size)
 
 
 class HnData:
@@ -244,14 +270,17 @@ class HnAnalyze:
         '''recommend posts in `new_posts` by and not in `posts_recommended`'''
         identities = [utils.get_post_identity(v) for v in posts_recommended]
         posts = [v for v in new_posts if utils.get_post_identity(v) not in identities]
-        posts_vector = np.array([nlp(v['title']).vector for v in posts])
-        posts_recommended_vector = np.array([nlp(v['title']).vector 
+        # posts_vector = np.array([_nlp(v['title']).vector for v in posts])
+        # posts_recommended_vector = np.array([_nlp(v['title']).vector 
+        #                                     for v in posts_recommended[:config.hn_recommend_compare]])
+        posts_vector = np.array([get_sent_vector(v['title']) for v in posts])
+        posts_recommended_vector = np.array([get_sent_vector(v['title']) 
                                              for v in posts_recommended[:config.hn_recommend_compare]])
         scores = posts_vector.dot(posts_recommended_vector.T).sum(axis=1)
 
        #for post in posts:
        #    score = 0
-       #    doc = nlp(post['title'])
+       #    doc = _nlp(post['title'])
        #    if doc.vector_norm != 0:
        #        for d in posts_recommended_doc:
        #            if d.vector_norm != 0:

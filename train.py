@@ -1,8 +1,9 @@
 #coding=utf8
 
 import string
-import spacy
+# import spacy
 from spacy.lang.en import English
+from spacy.lang.en.stop_words import STOP_WORDS
 
 from sklearn.base import TransformerMixin
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -18,15 +19,14 @@ _nlp = English()
 
 
 def spacy_tokenizer(sentence):
-    stop_words = spacy.lang.en.stop_words.STOP_WORDS
-    doc = _nlp(sentence)
+    doc = _nlp(sentence, disable=['tagger', 'parser', 'ner'])
 
     doc = [w.lemma_.lower().strip() 
            if w.lemma_ != "-PRON-" else w.lower_ 
            for w in doc]
 
     doc = [w for w in doc 
-           if w not in stop_words 
+           if w not in STOP_WORDS 
            and w not in string.punctuation]
 
     return doc
