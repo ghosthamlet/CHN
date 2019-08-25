@@ -24,7 +24,7 @@ UI code is in reactjs style, easy and familiar for many developer who like react
 
 
 ## Notice
-CHN tested in Ubuntu in its default terminal, ONLY work with python3.6.7, and maybe python3.6+, macOS/windows and other OS did not tested.
+CHN tested in Ubuntu in its default terminal, ONLY work with python3.6.7, and maybe python3.6+, macOS/windows and other OS did not tested, BUT when install by Docker [Installation](#installation), many OS and environments should work.
 
 CHN is still in early stage, may have many bugs and performance problems, but it is already useful now.
 
@@ -44,7 +44,7 @@ create comment/post and view detail did not implement, there are shortcuts to op
 
 ## Installation
 
-### From docker
+### By docker
 
 Notice: can't open web browser to show comment/post detail page from docker
 
@@ -55,7 +55,7 @@ or use proxy: docker run --net host -it --rm --name CHN --volume /srv/CHN/data:/
 (change 127.0.0.1:19180 to your proxy address)
 
 
-### From code
+### By code
 
 git clone https://github.com/ghosthamlet/CHN.git
 
@@ -68,7 +68,7 @@ python3 -m spacy download en_core_web_md
 
 ## Usage
 
-### From docker
+### By docker
 docker run -it --rm --name CHN --volume /srv/CHN/data:/app/data ghosthamlet/chn:latest python ui.py
 
 or use proxy: docker run --net host -it --rm --name CHN --volume /srv/CHN/data:/app/data ghosthamlet/chn:latest python ui.py -p 127.0.0.1:19180
@@ -76,7 +76,7 @@ or use proxy: docker run --net host -it --rm --name CHN --volume /srv/CHN/data:/
 (change 127.0.0.1:19180 to your proxy address)
 
 
-### From code
+### By code
 python3 ui.py
 
 or use proxy: python3 ui.py -p 127.0.0.1:19180
