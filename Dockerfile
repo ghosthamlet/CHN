@@ -11,7 +11,7 @@ RUN mkdir /app && \
 
 WORKDIR /app
 
-RUN python -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade pip
+# RUN python -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade pip
 
 COPY requirements.txt /app/requirements.txt
 RUN python -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt

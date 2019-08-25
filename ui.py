@@ -641,8 +641,10 @@ class App(Component):
 
     def component_did_mount(self):
         self.set_state({'loading': True})
-        self.init()
-        self.set_state({'loading': False})
+        def bgf():
+            self.init()
+            self.set_state({'loading': False})
+        threading.Thread(target=bgf).start()
 
     def render(self):
         if self.state['show_help']:
