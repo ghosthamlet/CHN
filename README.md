@@ -24,7 +24,7 @@ UI code is in reactjs style, easy and familiar for many developer who like react
 
 
 ## Notice
-CHN tested in Ubuntu in its default terminal, ONLY work with python3.6.7, and maybe python3.6+, macOS/windows and other OS did not tested, BUT when install by Docker see [Installation](#installation), many OS and environments should work.
+CHN tested in Ubuntu in its default terminal, ONLY work with python3.6.7, and maybe python3.6+, macOS/windows and other OS did not tested, BUT when install by Docker see [Installation](#installation), many OS and environments except windows should work.
 
 CHN is still in early stage, may have many bugs and performance problems, but it is already useful now.
 
