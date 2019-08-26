@@ -141,12 +141,11 @@ class HnClient:
             with open(json_file, 'r') as f:
                 posts = json.loads(f.read())
                 latest_post = posts[0]
-            if incremental:
-                posts.reverse()
 
         logger.info(page_type)
         logger.info(len(title_els))
          
+        new_posts = []
         for i, t in enumerate(title_els):
            # if t.atts['href'] in posts:
            #    continue
@@ -178,7 +177,7 @@ class HnClient:
                 end_request = True
                 break
 
-            posts.append(dict(
+            new_posts.append(dict(
                     url=url,
                     title=t.text,
                     # rank=int(rank_els[i].text[:-1]),
@@ -194,9 +193,12 @@ class HnClient:
                     favorite_url='/fave?%s' % vote_url.split('?')[1] if vote_url else ''
             ))
 
+        if incremental:
+            posts = new_posts + posts
+        else:
+            posts += new_posts
+
         with open(json_file, 'w') as f:
-            if incremental:
-                posts.reverse()
             f.write(json.dumps(posts))
 
         if more_el and not end_request:
