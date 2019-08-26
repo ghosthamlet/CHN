@@ -84,7 +84,7 @@ or use proxy: python3 ui.py -p 127.0.0.1:19180
 (change 127.0.0.1:19180 to your proxy address)
 
 
-### Shortcuts:
+### Shortcuts
 
     h: show/close help screen
 
@@ -105,7 +105,7 @@ or use proxy: python3 ui.py -p 127.0.0.1:19180
     ctrl c: quit
 
 
-### Notice:
+### Notice
 
     * when ui frozen, hit t, or ctrl c to quit and restart
 
