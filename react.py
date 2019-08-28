@@ -34,6 +34,8 @@ class Component:
                 _update_screen()
 
     def mount(self, el):
+        # TODO: use loop.widget = el
+        #       https://github.com/zulip/zulip-terminal/blob/master/zulipterminal/core.py#L107
         _ROOT_EL.contents = el
 
     def component_did_mount(self):
