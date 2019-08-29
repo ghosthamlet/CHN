@@ -639,6 +639,33 @@ class App(Component):
     def set_password(self, s):
         self.set_state({'password': s}, disable_render=True)
 
+    # TODO: have to be in the same event loop as urwid to work as async
+    def select_page_task(self):
+        while True:
+            page_type, = (yield)
+            if page_type == 'recommend':
+                self.download_posts('upvoted')
+                self.load_posts('upvoted')
+                self.download_posts('favorite')
+                self.load_posts('favorite')
+            self.download_posts(page_type)
+            self.load_posts(page_type)
+            # XXX: load_posts already change loading, don't set loading again, or ui will forzen
+            self.set_state({'loading': False, 'current_page_type': page_type})
+            # self.set_state({'current_page_type': page_type})
+
+    def favorite_task(self):
+        while True:
+            post, favorited = (yield)
+            self.client.favorite(post, favorited)
+            self.download_posts('favorite')
+            if favorited:
+                self.data.remove_post('favorite', post)
+            self.load_posts('favorite')
+            # XXX: load_posts already change loading, don't set loading again, or ui will forzen
+            self.set_state({'loading': False})
+            # self.refresh()
+ 
     def component_did_mount(self):
         self.set_state({'loading': True})
         def bgf():

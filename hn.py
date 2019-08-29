@@ -8,8 +8,8 @@ import pickle
 import requests
 import numpy as np
 # import spacy
-from spacy.lang.en import English
-from spacy.util import set_data_path
+# from spacy.lang.en import English
+# from spacy.util import set_data_path
 from bs4 import BeautifulSoup
 
 from spacy.strings import hash_string
