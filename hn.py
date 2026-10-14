@@ -3,9 +3,10 @@
 import os
 import json
 import logging
-import pickle
+import pickle  # Only for backward compatibility migration
 
 import requests
+import joblib
 import numpy as np
 # import spacy
 # from spacy.lang.en import English
@@ -85,8 +86,21 @@ class HnClient:
             } if config.proxy_host else None
 
         if os.path.exists(self.cookie_file):
-            with open(self.cookie_file, 'br') as f:
-                self.cookies = pickle.load(f)
+            try:
+                # Try JSON first (new secure format)
+                with open(self.cookie_file, 'r') as f:
+                    cookie_dict = json.load(f)
+                    self.cookies = requests.cookies.cookiejar_from_dict(cookie_dict)
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                # Fallback to pickle (old format) and auto-migrate
+                logger.warning("Old pickle cookie format detected. Migrating to secure JSON format...")
+                with open(self.cookie_file, 'br') as f:
+                    self.cookies = pickle.load(f)
+                # Immediately save in new JSON format
+                with open(self.cookie_file, 'w') as f:
+                    cookie_dict = requests.utils.dict_from_cookiejar(self.cookies)
+                    json.dump(cookie_dict, f)
+                logger.info("Cookie migration completed successfully.")
 
     def login(self, username, password):
         data = {
@@ -99,8 +113,10 @@ class HnClient:
 
         self.cookies = r.cookies #.decode()
 
-        with open(self.cookie_file, 'bw+') as f:
-            pickle.dump(self.cookies, f)
+        # Save cookies in secure JSON format
+        with open(self.cookie_file, 'w') as f:
+            cookie_dict = requests.utils.dict_from_cookiejar(self.cookies)
+            json.dump(cookie_dict, f)
         return True
 
     def get_username(self):
@@ -243,8 +259,24 @@ class HnClient:
 
 class HnAnalyze:
     def __init__(self):
-        with open(config.hn_classifer_model, 'rb') as f:
-            self.model = pickle.load(f)
+        # Load model using joblib (secure alternative to pickle)
+        model_path = config.hn_classifer_model
+        
+        # Support both .pkl (old) and .joblib (new) formats
+        if model_path.endswith('.pkl'):
+            # Check if .joblib version exists
+            joblib_path = model_path.replace('.pkl', '.joblib')
+            if os.path.exists(joblib_path):
+                logger.info(f"Loading model from secure joblib format: {joblib_path}")
+                self.model = joblib.load(joblib_path)
+            else:
+                # Fallback to pickle with warning
+                logger.warning(f"Loading model from pickle format. Consider migrating to joblib with migrate_model.py")
+                with open(model_path, 'rb') as f:
+                    self.model = pickle.load(f)
+        else:
+            # Load joblib format
+            self.model = joblib.load(model_path)
 
     def assoc_cat(self, posts):
         cats = self.classify([v['title'] for v in posts])

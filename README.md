@@ -24,6 +24,16 @@ UI code is in reactjs style, easy and familiar for many developer who like react
 
 
 ## Notice
+
+### Security Notice (v1.1.0+)
+**IMPORTANT**: CHN v1.1.0+ uses secure serialization formats (JSON for cookies, joblib for ML models). 
+
+If upgrading from an older version:
+- Cookie files will be **automatically migrated** to JSON on first run
+- ML model requires manual migration: run `python3 migrate_model.py`
+- See [SECURITY.md](SECURITY.md) for best practices
+
+### General Notice
 CHN tested in Ubuntu in its default terminal, ONLY work with python3.6.7, and maybe python3.6+, macOS/windows and other OS did not tested, BUT when install by Docker see [Installation](#installation), many OS and environments except windows should work.
 
 CHN is still in early stage, may have many bugs and performance problems, but it is already useful now.
@@ -48,11 +58,36 @@ create comment/post and view detail did not implement, there are shortcuts to op
 
 Notice: can't open web browser to show comment/post detail page from docker now, will fix it.
 
+```bash
 docker run -it --rm --name CHN --volume /srv/CHN/data:/app/data ghosthamlet/chn:latest python ui.py
+```
 
-or use proxy: docker run --net host -it --rm --name CHN --volume /srv/CHN/data:/app/data ghosthamlet/chn:latest python ui.py -p 127.0.0.1:19180
+or use proxy:
+```bash
+docker run --net host -it --rm --name CHN --volume /srv/CHN/data:/app/data ghosthamlet/chn:latest python ui.py -p 127.0.0.1:19180
+```
 
 (change 127.0.0.1:19180 to your proxy address)
+
+#### Docker Security Best Practices
+
+For production deployments, use secure mount options:
+
+```bash
+# Use read-only mount when possible
+docker run -it --rm --volume /srv/CHN/data:/app/data:ro ghosthamlet/chn:latest python ui.py
+
+# Run as non-root user (recommended)
+docker run -it --rm --user 1000:1000 --volume /srv/CHN/data:/app/data ghosthamlet/chn:latest python ui.py
+
+# Use named volumes with proper permissions
+docker volume create chn-data
+docker run -it --rm --volume chn-data:/app/data ghosthamlet/chn:latest python ui.py
+```
+
+**Security Warning**: Never use `chmod 777` on mounted directories. This creates a security vulnerability. Use proper user ownership instead.
+
+See [SECURITY.md](SECURITY.md) for complete security guidelines.
 
 
 ### By code
@@ -205,8 +240,9 @@ Overall, i did very little hyperparameter tune for all classifer, from the resul
 
 ### Train your own classifer
 1. change reddit crawl settings in config.py, crawl subreddits posts by run crawler.py, you can use exists data/reddit.csv and skip this step
-2. train in Train.ipynb, sorry the code in Train notebook is not good
-3. change hn_classifer_model in config.py with saved model of the previous step 
+2. train in Train.ipynb, model will be saved using secure joblib format (.joblib)
+3. change hn_classifer_model in config.py with saved model path of the previous step
+4. **Security Note**: Always use joblib (not pickle) for model serialization 
 
 
 ## Settings
